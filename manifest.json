@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "42Time",
+  "version": "1.0.0",
+  "description": "42 인트라 프로필에서 월별 로그타임 합계와 남은 시간을 계산해 보여줍니다.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://profile-v3.intra.42.fr/*",
+    "https://translate.intra.42.fr/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://profile-v3.intra.42.fr/*"
+      ],
+      "js": ["interceptor.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://profile-v3.intra.42.fr/*"
+      ],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

@@ -1,0 +1,233 @@
+#lt42-panel {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  width: 290px;
+  z-index: 2147483000;
+  background: #1f2937;
+  color: #e5e7eb;
+  border: 1px solid #374151;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-family: -apple-system, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+#lt42-panel.lt42-collapsed .lt42-body,
+#lt42-panel.lt42-collapsed > .lt42-sub {
+  display: none;
+}
+#lt42-panel.lt42-collapsed .lt42-gear,
+#lt42-panel.lt42-collapsed .lt42-lang {
+  display: none;
+}
+#lt42-panel.lt42-collapsed {
+  width: auto;
+  padding: 8px 12px;
+}
+
+.lt42-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+#lt42-panel.lt42-collapsed .lt42-header { margin-bottom: 0; }
+
+.lt42-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #00babc;
+  white-space: nowrap;
+}
+
+.lt42-btns { display: flex; gap: 2px; }
+
+.lt42-gear,
+.lt42-min,
+.lt42-lang {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 5px;
+  line-height: 1;
+}
+.lt42-lang {
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid #4b5563;
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+.lt42-gear:hover,
+.lt42-min:hover,
+.lt42-lang:hover { color: #e5e7eb; border-color: #9ca3af; }
+
+.lt42-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 1px 0;
+}
+
+.lt42-label { color: #9ca3af; }
+.lt42-value { font-weight: 700; white-space: nowrap; }
+
+.lt42-bar {
+  height: 8px;
+  background: #374151;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 6px 0;
+}
+
+.lt42-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00babc, #38bdf8);
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+.lt42-bar-fill.lt42-done { background: #22c55e; }
+
+.lt42-sub { font-size: 12px; color: #9ca3af; }
+.lt42-warn { color: #fbbf24; font-weight: 600; }
+.lt42-ok { color: #22c55e; font-weight: 600; }
+.lt42-avg { color: #38bdf8; font-weight: 700; }
+
+.lt42-months {
+  margin-top: 8px;
+  border-top: 1px solid #374151;
+  padding-top: 6px;
+}
+
+.lt42-mono {
+  font-family: "SF Mono", Consolas, monospace;
+  color: #38bdf8;
+}
+
+.lt42-dim { color: #6b7280; font-size: 11px; }
+.lt42-months-title { margin-bottom: 2px; }
+
+.lt42-settings {
+  margin-top: 8px;
+  border-top: 1px solid #374151;
+  padding-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.lt42-settings label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.lt42-settings input {
+  background: #111827;
+  color: #e5e7eb;
+  border: 1px solid #4b5563;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 12px;
+  color-scheme: dark;
+}
+.lt42-settings input[type="number"] { width: 52px; }
+
+.lt42-settings input.lt42-invalid {
+  border-color: #ef4444;
+  outline: 1px solid #ef4444;
+}
+
+/* 제외 요일 토글 */
+.lt42-days-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+.lt42-lbl-days { font-size: 12px; color: #9ca3af; white-space: nowrap; }
+.lt42-day-btns {
+  display: flex;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap; /* 넘치면 다음 줄로 */
+}
+.lt42-day {
+  background: #111827;
+  color: #9ca3af;
+  border: 1px solid #4b5563;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  cursor: pointer;
+  line-height: 1.4;
+  flex: 0 0 auto;
+}
+.lt42-day:hover { border-color: #9ca3af; }
+.lt42-day.lt42-day-on {
+  background: #b45309;
+  border-color: #f59e0b;
+  color: #fff;
+  font-weight: 700;
+}
+
+/* 제외 날짜 */
+.lt42-dates-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+.lt42-lbl-dates { font-size: 12px; color: #9ca3af; white-space: nowrap; }
+.lt42-add-date {
+  background: #374151;
+  color: #e5e7eb;
+  border: 1px solid #4b5563;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-weight: 700;
+  cursor: pointer;
+  line-height: 1.4;
+}
+.lt42-add-date:hover { background: #4b5563; }
+.lt42-date-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: 100%;
+}
+.lt42-date-chips:empty { display: none; }
+.lt42-chip {
+  background: #7c2d12;
+  color: #fed7aa;
+  border: 1px solid #ea580c;
+  border-radius: 10px;
+  padding: 1px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  line-height: 1.5;
+}
+.lt42-chip:hover { background: #9a3412; }
+
+/* 접었을 때만 헤더에 누적/목표 요약 표시 */
+.lt42-summary {
+  display: none;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: #e5e7eb;
+  white-space: nowrap;
+}
+#lt42-panel.lt42-collapsed .lt42-summary { display: inline; }
+.lt42-summary.lt42-summary-done { color: #22c55e; }

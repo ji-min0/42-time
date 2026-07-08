@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "42Time",
-  "version": "1.0.0",
-  "description": "42 인트라 프로필에서 월별 로그타임 합계와 남은 시간을 계산해 보여줍니다.",
+  "version": "1.1.0",
+  "description": "42 인트라 프로필에서 주별·월별 로그타임 합계와 목표 시간 달성률을 보여줍니다.",
   "permissions": ["storage"],
   "host_permissions": [
     "https://profile-v3.intra.42.fr/*",

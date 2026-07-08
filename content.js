@@ -2,10 +2,11 @@
   const DEFAULTS = {
     piscineStart: "2026-06-29",
     piscineEnd: "2026-07-23",
-    targetHours: 120,
+    targetHours: 0, // 총 목표 시간(h). 0이면 미설정 (주 목표 있으면 주 목표×주차 수로 대체)
     lang: "ko",
     excludeDays: [], // 제외 요일: 0(일)~6(토)
     excludeDates: [], // 제외 날짜: ["2026-07-15", ...]
+    weeklyGoal: 0, // 주차별 목표 시간(h). 0이면 표시 안 함 (경북대 현장실습: 40)
   };
 
   const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -24,6 +25,15 @@
       exclDays: "제외 요일",
       exclDates: "제외 날짜",
       dateCount: (n) => `날짜 ${n}일`,
+      weekly: "주차별",
+      weekLabel: (n) => `${n}주차`,
+      wgoal: "주 목표(h)",
+      attend: (n) => `${n}일`,
+      weekAvg: (avg) => `이번 주 하루 평균 ${avg} 필요`,
+      weekDone: "이번 주 목표 달성 ✓",
+      shortWeek: (t) => `이번 주 부족 ${t}`,
+      thisWeek: (range) => `이번 주 (${range})`,
+      cumul: (t) => `누적: ${t}`,
       today: "오늘",
       monthly: "월별",
       monthName: (m) => `${m}월`,
@@ -48,6 +58,15 @@
       exclDays: "Skip days",
       exclDates: "Skip dates",
       dateCount: (n) => `${n} date${n > 1 ? "s" : ""}`,
+      weekly: "Weekly",
+      weekLabel: (n) => `W${n}`,
+      wgoal: "Wk goal(h)",
+      attend: (n) => `${n}d`,
+      weekAvg: (avg) => `This week: need ${avg}/day`,
+      weekDone: "Weekly goal reached ✓",
+      shortWeek: (t) => `This week short by ${t}`,
+      thisWeek: (range) => `This week (${range})`,
+      cumul: (t) => `Total: ${t}`,
       today: "Today",
       monthly: "Monthly",
       monthName: (m) =>
@@ -132,7 +151,7 @@
     if (raw && DATE_RE.test(raw.piscineStart || "")) s.piscineStart = raw.piscineStart;
     if (raw && DATE_RE.test(raw.piscineEnd || "")) s.piscineEnd = raw.piscineEnd;
     const t = Number(raw && raw.targetHours);
-    if (Number.isFinite(t) && t > 0) s.targetHours = t;
+    if (Number.isFinite(t) && t >= 0) s.targetHours = t;
     if (raw && (raw.lang === "ko" || raw.lang === "en")) s.lang = raw.lang;
     if (raw && Array.isArray(raw.excludeDays)) {
       s.excludeDays = [...new Set(raw.excludeDays)]
@@ -144,6 +163,10 @@
       s.excludeDates = [...new Set(raw.excludeDates)]
         .filter((d) => DATE_RE.test(String(d)))
         .sort();
+    }
+    if (raw && raw.weeklyGoal !== undefined) {
+      const w = Number(raw.weeklyGoal);
+      if (Number.isFinite(w) && w >= 0) s.weeklyGoal = w;
     }
     return s;
   }
@@ -243,6 +266,45 @@
     return result;
   }
 
+  // 주차별 합계: 일~토 달력 주 기준, 라피신 기간 내로 클리핑.
+  // 첫 주는 시작일~그 주 토요일, 마지막 주는 일요일~종료일이 된다.
+  // (경북대 "마지막 주 일~금" 규칙은 종료일을 금요일로 두면 자동 반영)
+  function piscineWeeklyTotals(startISO, endISO) {
+    const result = [];
+    let cursor = new Date(startISO + "T00:00:00");
+    const endDate = new Date(endISO + "T00:00:00");
+    let n = 1;
+
+    while (cursor <= endDate) {
+      const weekEnd = new Date(cursor);
+      weekEnd.setDate(weekEnd.getDate() + (6 - weekEnd.getDay())); // 이번 주 토요일
+      const to = weekEnd < endDate ? weekEnd : endDate;
+
+      const fromISO = isoDate(cursor);
+      const toISO = isoDate(to);
+      result.push({
+        n: n++,
+        from: fromISO,
+        to: toISO,
+        seconds: rangeTotal(fromISO, toISO),
+        attendDays: attendanceDays(fromISO, toISO),
+      });
+
+      cursor = new Date(to);
+      cursor.setDate(cursor.getDate() + 1); // 다음 주 일요일
+    }
+    return result;
+  }
+
+  // 범위 내에서 로그타임이 1분 이상 있는 날 수 (출석 일수)
+  function attendanceDays(fromISO, toISO) {
+    let count = 0;
+    for (const [date, sec] of Object.entries(statsByDate)) {
+      if (date >= fromISO && date <= toISO && sec >= 60) count++;
+    }
+    return count;
+  }
+
   // ---------- 설정 적용 (즉시 반영 + 자동 저장) ----------
 
   function applySettingsFromInputs(panel) {
@@ -258,6 +320,7 @@
         piscineStart: startInput.value,
         piscineEnd: endInput.value,
         targetHours: panel.querySelector(".lt42-target").value,
+        weeklyGoal: panel.querySelector(".lt42-wgoal").value || 0,
         lang: settings.lang,
         excludeDays,
       },
@@ -304,7 +367,8 @@
         <div class="lt42-settings" hidden>
           <label><span class="lt42-lbl-start"></span> <input type="date" class="lt42-start"></label>
           <label><span class="lt42-lbl-end"></span> <input type="date" class="lt42-end"></label>
-          <label><span class="lt42-lbl-goal"></span> <input type="number" class="lt42-target" min="1"></label>
+          <label><span class="lt42-lbl-goal"></span> <input type="number" class="lt42-target" min="0" placeholder="0"></label>
+          <label><span class="lt42-lbl-wgoal"></span> <input type="number" class="lt42-wgoal" min="0" placeholder="0"></label>
           <div class="lt42-days-row">
             <span class="lt42-lbl-days"></span>
             <span class="lt42-day-btns">
@@ -346,7 +410,7 @@
     });
 
     // 변경 즉시 반영: 어떤 입력이든 바뀌면 바로 재계산 + 저장
-    for (const sel of [".lt42-start", ".lt42-end", ".lt42-target"]) {
+    for (const sel of [".lt42-start", ".lt42-end", ".lt42-target", ".lt42-wgoal"]) {
       const input = panel.querySelector(sel);
       input.addEventListener("change", () => applySettingsFromInputs(panel));
       input.addEventListener("input", () => applySettingsFromInputs(panel));
@@ -395,7 +459,8 @@
   function syncSettingsInputs(panel) {
     panel.querySelector(".lt42-start").value = settings.piscineStart;
     panel.querySelector(".lt42-end").value = settings.piscineEnd;
-    panel.querySelector(".lt42-target").value = settings.targetHours;
+    panel.querySelector(".lt42-target").value = settings.targetHours || "";
+    panel.querySelector(".lt42-wgoal").value = settings.weeklyGoal || "";
     for (const btn of panel.querySelectorAll(".lt42-day")) {
       btn.classList.toggle(
         "lt42-day-on",
@@ -425,6 +490,7 @@
     panel.querySelector(".lt42-lbl-start").textContent = l.start;
     panel.querySelector(".lt42-lbl-end").textContent = l.end;
     panel.querySelector(".lt42-lbl-goal").textContent = l.goal;
+    panel.querySelector(".lt42-lbl-wgoal").textContent = l.wgoal;
     panel.querySelector(".lt42-lbl-days").textContent = l.exclDays;
     panel.querySelector(".lt42-lbl-dates").textContent = l.exclDates;
     for (const btn of panel.querySelectorAll(".lt42-day")) {
@@ -443,14 +509,24 @@
       return;
     }
 
-    const { piscineStart: start, piscineEnd: end, targetHours } = settings;
+    const { piscineStart: start, piscineEnd: end } = settings;
+    const today = todayISO();
+
+    // 주차/월별은 목표 계산에 필요하므로 먼저 집계
+    const months = piscineMonthlyTotals(start, end);
+    const weeks = piscineWeeklyTotals(start, end);
+    const wg = settings.weeklyGoal; // 0이면 주 목표 미사용
+
+    // 표시 모드: 총 목표 직접 설정 > 주 목표만 > 없음
+    //  - total: 상단 값/바 = 전체 누적/총 목표
+    //  - week : 상단 값/바 = 이번 주 누적/주 목표 (매주 리셋)
+    //  - none : 값만, 바 없음
+    const mode = settings.targetHours > 0 ? "total" : wg > 0 ? "week" : "none";
+    const targetHours = settings.targetHours;
     const targetSec = targetHours * 3600;
 
     const doneSec = rangeTotal(start, end);
     const remainSec = Math.max(0, targetSec - doneSec);
-    const pct = Math.min(100, targetSec > 0 ? (doneSec / targetSec) * 100 : 0);
-
-    const today = todayISO();
 
     // 기간 요약 (시작일을 바꾸면 전체·경과가 바로 변함)
     //  전체 = 시작~종료, 남은 = max(오늘,시작)~종료 (오늘 포함), 경과 = 전체 - 남은
@@ -463,7 +539,7 @@
     // 남은 날짜 / 하루 평균: 제외 요일·날짜를 뺀 "실제 갈 수 있는 날" 기준
     let leftLine = "";
     let avgLine = "";
-    if (remainSec > 0 && daysLeft > 0) {
+    if (daysLeft > 0) {
       const from = today > start ? today : start;
       const effDaysLeft = countDaysExcluding(
         from,
@@ -473,41 +549,136 @@
       );
       if (effDaysLeft > 0) {
         leftLine = l.leftLine(effDaysLeft);
-        avgLine = l.avgLine(fmt(Math.ceil(remainSec / effDaysLeft)));
+        // 전체 하루 평균은 총 목표를 직접 설정한 경우에만
+        if (mode === "total" && remainSec > 0) {
+          avgLine = l.avgLine(fmt(Math.ceil(remainSec / effDaysLeft)));
+        }
       }
     }
 
     const todaySec = statsByDate[today] || 0;
-    const months = piscineMonthlyTotals(start, end);
+
+    // 주 목표 사용 시: 이번 주 누적/부족/하루 평균 (제외 요일·날짜 반영)
+    let weekAvgLine = "";
+    let curWeek = null;
+    let curWeekRemain = 0;
+    if (wg > 0) {
+      curWeek = weeks.find((w) => today >= w.from && today <= w.to) || null;
+      if (curWeek) {
+        curWeekRemain = Math.max(0, wg * 3600 - curWeek.seconds);
+        if (curWeekRemain > 0) {
+          const effWeekDays = countDaysExcluding(
+            today,
+            curWeek.to,
+            settings.excludeDays,
+            settings.excludeDates
+          );
+          if (effWeekDays > 0) {
+            weekAvgLine = `<span class="lt42-avg">${l.weekAvg(
+              fmt(Math.ceil(curWeekRemain / effWeekDays))
+            )}</span>`;
+          }
+        }
+      }
+    }
+
+    // 부족/달성 줄 (모드별)
+    let shortLine = "";
+    if (mode === "total") {
+      shortLine =
+        remainSec === 0
+          ? `<span class="lt42-ok">${l.reached(targetHours, fmt(doneSec - targetSec))}</span>`
+          : `<span class="lt42-warn">${l.short(fmt(remainSec))}</span>`;
+    } else if (mode === "week" && curWeek) {
+      shortLine =
+        curWeekRemain === 0
+          ? `<span class="lt42-ok">${l.weekDone}</span>`
+          : `<span class="lt42-warn">${l.shortWeek(fmt(curWeekRemain))}</span>`;
+    }
+    // 총 목표 + 주 목표 둘 다 있는 경우: 이번 주 달성 표시는 weekAvgLine 자리에
+    if (mode === "total" && wg > 0 && curWeek && curWeekRemain === 0) {
+      weekAvgLine = `<span class="lt42-ok">${l.weekDone}</span>`;
+    }
+
+    // 상단 값/바 (모드별)
+    let headLabel = `${l.piscine} ${mmdd(start)} ~ ${mmdd(end)}`;
+    let headValue = fmt(doneSec);
+    let barPct = -1; // 음수면 바 없음
+    let barDone = false;
+    if (mode === "total") {
+      headValue = `${fmt(doneSec)} / ${targetHours}h`;
+      barPct = Math.min(100, (doneSec / targetSec) * 100);
+      barDone = remainSec === 0;
+    } else if (mode === "week" && curWeek) {
+      headLabel = l.thisWeek(`${mmdd(curWeek.from)}~${mmdd(curWeek.to)}`);
+      headValue = `${fmt(curWeek.seconds)} / ${wg}h`;
+      barPct = Math.min(100, (curWeek.seconds / (wg * 3600)) * 100);
+      barDone = curWeekRemain === 0;
+    }
 
     if (currentLogin) {
       panel.querySelector(".lt42-title").textContent = `⏱ Logtime | ${currentLogin}`;
     }
-    // 접었을 때 헤더에 보이는 요약: 누적 / 목표
+    // 접었을 때 헤더 요약 (모드별)
     const summary = panel.querySelector(".lt42-summary");
-    summary.textContent = `${fmtShort(doneSec)} / ${targetHours}h`;
-    summary.classList.toggle("lt42-summary-done", remainSec === 0);
+    if (mode === "total") {
+      summary.textContent = `${fmtShort(doneSec)} / ${targetHours}h`;
+      summary.classList.toggle("lt42-summary-done", remainSec === 0);
+    } else if (mode === "week" && curWeek) {
+      summary.textContent = `${fmtShort(curWeek.seconds)} / ${wg}h`;
+      summary.classList.toggle("lt42-summary-done", curWeekRemain === 0);
+    } else {
+      summary.textContent = fmtShort(doneSec);
+      summary.classList.remove("lt42-summary-done");
+    }
 
     content.innerHTML = `
       <div class="lt42-piscine">
         <div class="lt42-row">
-          <span class="lt42-label">${l.piscine} ${mmdd(start)} ~ ${mmdd(end)}</span>
-          <span class="lt42-value">${fmt(doneSec)} / ${targetHours}h</span>
+          <span class="lt42-label">${headLabel}</span>
+          <span class="lt42-value">${headValue}</span>
         </div>
+        ${
+          barPct >= 0
+            ? `
         <div class="lt42-bar">
-          <div class="lt42-bar-fill${remainSec === 0 ? " lt42-done" : ""}"
-               style="width:${pct.toFixed(1)}%"></div>
-        </div>
-        <div class="lt42-row lt42-sub">
-          ${
-            remainSec === 0
-              ? `<span class="lt42-ok">${l.reached(targetHours, fmt(doneSec - targetSec))}</span>`
-              : `<span class="lt42-warn">${l.short(fmt(remainSec))}</span>`
-          }
-        </div>
+          <div class="lt42-bar-fill${barDone ? " lt42-done" : ""}"
+               style="width:${barPct.toFixed(1)}%"></div>
+        </div>`
+            : ""
+        }
         <div class="lt42-sub">${periodLine}${leftLine ? ` (${leftLine})` : ""}</div>
-        ${avgLine ? `<div class="lt42-sub"><span class="lt42-avg">${avgLine}</span></div>` : ""}
+        ${mode === "week" && curWeek ? `<div class="lt42-sub">${l.cumul(fmt(doneSec))}</div>` : ""}
         <div class="lt42-sub">${l.today}: ${fmt(todaySec)}</div>
+        ${shortLine ? `<div class="lt42-sub">${shortLine}</div>` : ""}
+        ${avgLine ? `<div class="lt42-sub"><span class="lt42-avg">${avgLine}</span></div>` : ""}
+        ${weekAvgLine ? `<div class="lt42-sub">${weekAvgLine}</div>` : ""}
+      </div>
+
+      <div class="lt42-weeks">
+        <div class="lt42-sub lt42-months-title">${l.weekly}</div>
+        ${weeks
+          .map((w) => {
+            const isNow = today >= w.from && today <= w.to;
+            const ended = w.to < today;
+            const met = wg > 0 && w.seconds >= wg * 3600;
+            return `
+          <div class="lt42-row${isNow ? " lt42-week-now" : ""}">
+            <span>${l.weekLabel(w.n)} <span class="lt42-dim">(${mmdd(w.from)}~${mmdd(w.to)})</span></span>
+            <span class="lt42-mono">${fmtShort(w.seconds)}${
+              wg > 0
+                ? `<span class="lt42-dim"> / ${wg}h · ${l.attend(w.attendDays)}</span>${
+                    met
+                      ? `<span class="lt42-ok"> ✓</span>`
+                      : ended
+                        ? `<span class="lt42-fail"> ✕</span>`
+                        : ""
+                  }`
+                : ""
+            }</span>
+          </div>`;
+          })
+          .join("")}
       </div>
 
       <div class="lt42-months">

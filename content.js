@@ -528,6 +528,9 @@
     const doneSec = rangeTotal(start, end);
     const remainSec = Math.max(0, targetSec - doneSec);
 
+    // 오늘 로그타임 (하루 평균 계산에 필요하므로 먼저 계산)
+    const todaySec = statsByDate[today] || 0;
+
     // 기간 요약 (시작일을 바꾸면 전체·경과가 바로 변함)
     //  전체 = 시작~종료, 남은 = max(오늘,시작)~종료 (오늘 포함), 경과 = 전체 - 남은
     const totalDays = daysBetweenInclusive(start, end);
@@ -536,7 +539,10 @@
     const elapsedDays = totalDays - daysLeft;
     const periodLine = l.period(elapsedDays, totalDays);
 
-    // 남은 날짜 / 하루 평균: 제외 요일·날짜를 뺀 "실제 갈 수 있는 날" 기준
+    // 남은 날짜 / 하루 평균: 제외 요일·날짜를 뺀 "실제 갈 수 있는 날" 기준.
+    // 하루 평균은 "어제까지 누적"을 기준으로 계산한다 (부족분에 오늘 한 시간을
+    // 되돌려서 나눔). 그래서 의미가 "오늘 포함 매일 X씩"으로 고정되고,
+    // 오늘 시간을 채워도 숫자가 실시간으로 줄어들지 않는다.
     let leftLine = "";
     let avgLine = "";
     if (daysLeft > 0) {
@@ -551,12 +557,10 @@
         leftLine = l.leftLine(effDaysLeft);
         // 전체 하루 평균은 총 목표를 직접 설정한 경우에만
         if (mode === "total" && remainSec > 0) {
-          avgLine = l.avgLine(fmt(Math.ceil(remainSec / effDaysLeft)));
+          avgLine = l.avgLine(fmt(Math.ceil((remainSec + todaySec) / effDaysLeft)));
         }
       }
     }
-
-    const todaySec = statsByDate[today] || 0;
 
     // 주 목표 사용 시: 이번 주 누적/부족/하루 평균 (제외 요일·날짜 반영)
     let weekAvgLine = "";
@@ -574,8 +578,9 @@
             settings.excludeDates
           );
           if (effWeekDays > 0) {
+            // 어제까지 누적 기준: 부족분에 오늘 한 시간을 되돌려서 나눔
             weekAvgLine = `<span class="lt42-avg">${l.weekAvg(
-              fmt(Math.ceil(curWeekRemain / effWeekDays))
+              fmt(Math.ceil((curWeekRemain + todaySec) / effWeekDays))
             )}</span>`;
           }
         }
@@ -702,14 +707,6 @@
     await loadSettings();
     ensurePanel();
     render();
-
-    let lastPath = location.pathname;
-    setInterval(() => {
-      if (location.pathname !== lastPath) {
-        lastPath = location.pathname;
-        tryV2Fallback();
-      }
-    }, 1500);
   }
 
   main();

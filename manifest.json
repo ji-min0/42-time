@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "42Time",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "42 인트라 프로필에서 주별·월별 로그타임 합계와 목표 시간 달성률을 보여줍니다.",
   "permissions": ["storage"],
   "host_permissions": [

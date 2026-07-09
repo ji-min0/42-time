@@ -96,14 +96,16 @@
   }
 
   function fmt(seconds) {
-    const h = Math.floor(seconds / 3600);
-    const min = Math.round((seconds % 3600) / 60);
+    const totalMin = Math.round(seconds / 60);
+    const h = Math.floor(totalMin / 60);
+    const min = totalMin % 60;
     return L().dur(h, min);
   }
 
   function fmtShort(seconds) {
-    const h = Math.floor(seconds / 3600);
-    const min = Math.round((seconds % 3600) / 60);
+    const totalMin = Math.round(seconds / 60);
+    const h = Math.floor(totalMin / 60);
+    const min = totalMin % 60;
     return `${h}h${String(min).padStart(2, "0")}m`;
   }
 

@@ -16,6 +16,8 @@
       waiting:
         "로그타임 데이터를 기다리는 중...<br>프로필의 <b>로그타임 캘린더가 보이도록</b> 스크롤/이동해 보세요.",
       piscine: "라피신",
+	  titleWithLogin: (login) => `⏱ ${login} 로그타임`,
+      titleDefault: "⏱ Moulinette Time",
       short: (t) => `부족 ${t}`,
       reached: (h, extra) => ` ${h}시간 달성! (+${extra})`,
       leftLine: (d) => `남은 ${d}일`,
@@ -49,6 +51,8 @@
       waiting:
         "Waiting for logtime data...<br>Scroll so the <b>logtime calendar is visible</b> on your profile.",
       piscine: "Piscine",
+	  titleWithLogin: (login) => `⏱ ${login}'s logtime`,
+      titleDefault: "⏱ Moulinette Time",
       short: (t) => `Short by ${t}`,
       reached: (h, extra) => ` ${h}h reached! (+${extra})`,
       leftLine: (d) => `${d} left`,
@@ -84,6 +88,40 @@
   let statsByDate = null; // { "2026-07-01": seconds, ... }
   let settings = { ...DEFAULTS };
   let currentLogin = null;
+  function findLogin() {
+  // 1순위: 프로필 상세 영역의 로그인 (p.text-sm)
+  const p = document.querySelector("p.text-sm");
+  if (p) {
+    const text = p.textContent.trim();
+    if (text) return text;
+  }
+
+  // 2순위: URL의 /users/{login}
+  const urlMatch = location.pathname.match(/\/users\/([a-zA-Z0-9_-]+)/);
+  if (urlMatch) return urlMatch[1];
+
+  // 3순위: 네비바의 내 계정 정보 (항상 내 id)
+  const meEl = document.querySelector("span[data-login]");
+  if (meEl) return meEl.getAttribute("data-login");
+
+  // 4순위(백업)
+  const el = document.querySelector("[data-login]");
+  if (el) return el.getAttribute("data-login");
+  const link = document.querySelector('a[href*="/users/"]');
+  if (link) {
+    const m = link.getAttribute("href").match(/\/users\/([a-zA-Z0-9_-]+)/);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+  function updateLogin() {
+    const login = findLogin();
+    if (login && login !== currentLogin) {
+      currentLogin = login;
+      render();
+    }
+  }
 
   const L = () => STR[settings.lang] || STR.ko;
 
@@ -220,7 +258,7 @@
     const size = Object.keys(normalized).length;
     if (!statsByDate || size >= Object.keys(statsByDate).length) {
       statsByDate = normalized;
-      console.info(`[42 Logtime Tracker] 데이터 수신 (${sourceLabel}, ${size}일)`);
+      console.info(`[Moulinette Time] 데이터 수신 (${sourceLabel}, ${size}일)`);
       render();
     }
   }
@@ -338,7 +376,7 @@
     settings = next;
     persist();
     console.info(
-      `[42 Logtime Tracker] 설정 적용: ${settings.piscineStart} ~ ${settings.piscineEnd}, ${settings.targetHours}h`
+      `[Moulinette Time] 설정 적용: ${settings.piscineStart} ~ ${settings.piscineEnd}, ${settings.targetHours}h`
     );
     render();
   }
@@ -354,7 +392,7 @@
 
     panel.innerHTML = `
       <div class="lt42-header">
-        <span class="lt42-title">⏱ Logtime</span>
+        <span class="lt42-title">⏱ Moulinette Time</span>
         <span class="lt42-summary"></span>
         <span class="lt42-btns">
           <button class="lt42-lang"></button>
@@ -506,6 +544,12 @@
     const panel = ensurePanel();
     const content = panel.querySelector(".lt42-content");
     const l = L();
+
+    // 데이터 유무와 무관하게 로그인 표시는 항상 갱신
+    panel.querySelector(".lt42-title").textContent = currentLogin
+	  ? l.titleWithLogin(currentLogin)
+	  : l.titleDefault;
+
     if (!statsByDate) {
       content.innerHTML = `<div class="lt42-sub lt42-waiting">${l.waiting}</div>`;
       return;
@@ -624,9 +668,6 @@
       barDone = curWeekRemain === 0;
     }
 
-    if (currentLogin) {
-      panel.querySelector(".lt42-title").textContent = `⏱ Logtime | ${currentLogin}`;
-    }
     // 접었을 때 헤더 요약 (모드별)
     const summary = panel.querySelector(".lt42-summary");
     if (mode === "total") {
@@ -709,7 +750,18 @@
   async function main() {
     await loadSettings();
     ensurePanel();
+    updateLogin();
     render();
+
+    let lastPath = location.pathname;
+    setInterval(() => {
+      const pathChanged = location.pathname !== lastPath;
+      if (pathChanged) lastPath = location.pathname;
+      // URL이 바뀌었거나, 아직 로그인을 못 찾았으면 계속 재시도
+      if (pathChanged || !currentLogin) {
+        updateLogin();
+      }
+    }, 1500);
   }
 
   main();

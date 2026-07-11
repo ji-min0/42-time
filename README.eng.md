@@ -14,11 +14,19 @@ A browser extension that shows your logtime at a glance on the 42 intra (v3) pro
 ## What does it show?
 
 - **Progress**: accumulated hours / goal, progress bar, how much you're short
-- **Daily average**: how many hours per day, starting today, to hit your goal
+- **Daily average**: how many hours per day to reach your goal
+  - Fixed — hours per day needed starting today (a baseline that stays the same all day)
+  - Live — hours per day needed as of right now (goes down as you log hours today)
+- **Today check**: turns green when today's logtime exceeds the daily requirement
 - **Weekly / monthly totals**: aggregated by calendar week (Sun–Sat) and by month
-- **Weekly goal mode**: for people with per-week requirements like "40h every week" (e.g. KNU field training). Weeks you made get a ✓, weeks you missed get a ✕
+- **Weekly goal mode**: for people with per-week requirements like "40h every week"
+  - Weeks you made get a ✓, weeks you missed get a ✕
+  - (e.g. KNU field training)
+  - With only a weekly goal set, the top progress bar switches to the current week and resets weekly
+
 - **Skip days/dates**: resting on Sundays? Exam day doesn't count? Exclude them from the daily average
-- **KO/EN toggle**, collapse button, and settings that save the moment you change them
+- **Movable panel**: drag the header to put it anywhere (position is remembered)
+- **KO/EN toggle**, collapse button, settings apply and save instantly
 
 ## Installation (Chrome / Edge / any Chromium browser)
 

@@ -34,7 +34,16 @@
   align-items: center;
   gap: 12px;
   margin-bottom: 8px;
+  cursor: move;
+  user-select: none;
+  touch-action: none;
 }
+
+#lt42-panel.lt42-dragging {
+  transition: none;
+  opacity: 0.9;
+}
+
 #lt42-panel.lt42-collapsed .lt42-header { margin-bottom: 0; }
 
 .lt42-title {
@@ -97,7 +106,16 @@
 .lt42-sub { font-size: 12px; color: #9ca3af; }
 .lt42-warn { color: #fbbf24; font-weight: 600; }
 .lt42-ok { color: #22c55e; font-weight: 600; }
-.lt42-avg { color: #38bdf8; font-weight: 700; }
+.lt42-avg { color: #7dd3fc; font-weight: 400; opacity: 0.75; }
+.lt42-avg-live { color: #38bdf8; font-weight: 700; }
+.lt42-today { color: #e5e7eb; font-weight: 700; }
+.lt42-today.lt42-ok { color: #22c55e; }
+
+.lt42-weeks {
+  margin-top: 8px;
+  border-top: 1px solid #374151;
+  padding-top: 6px;
+}
 
 .lt42-months {
   margin-top: 8px;

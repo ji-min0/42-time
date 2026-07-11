@@ -21,7 +21,8 @@
       short: (t) => `부족 ${t}`,
       reached: (h, extra) => ` ${h}시간 달성! (+${extra})`,
       leftLine: (d) => `남은 ${d}일`,
-      avgLine: (avg) => `[고정] 하루 평균 ${avg} 필요`,
+      avgLine: (avg) => `오늘부터 매일 ${avg}`,
+	  avgLive: (avg) => `지금부터 매일 ${avg}`,
       period: (elapsed, total) => `기간 ${total}일 · 경과 ${elapsed}일`,
       dayNames: ["일", "월", "화", "수", "목", "금", "토"],
       exclDays: "제외 요일",
@@ -31,7 +32,8 @@
       weekLabel: (n) => `${n}주차`,
       wgoal: "주 목표(h)",
       attend: (n) => `${n}일`,
-      weekAvg: (avg) => `이번 주 하루 평균 ${avg} 필요`,
+      weekAvg: (avg) => `[고정] 이번 주 하루 평균 ${avg} 필요`,
+      weekAvgLive: (avg) => `[라이브] 이번 주 하루 평균 ${avg} 필요`,
       weekDone: "이번 주 목표 달성 ✓",
       shortWeek: (t) => `이번 주 부족 ${t}`,
       thisWeek: (range) => `이번 주 (${range})`,
@@ -57,6 +59,7 @@
       reached: (h, extra) => ` ${h}h reached! (+${extra})`,
       leftLine: (d) => `${d} left`,
       avgLine: (avg) => `[Fixed] Need ${avg} / day`,
+      avgLive: (avg) => `[Live] Need ${avg} / day`,
       period: (elapsed, total) => `${total} days total · ${elapsed} elapsed`,
       dayNames: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
       exclDays: "Skip days",
@@ -66,7 +69,8 @@
       weekLabel: (n) => `W${n}`,
       wgoal: "Wk goal(h)",
       attend: (n) => `${n}d`,
-      weekAvg: (avg) => `This week: need ${avg}/day`,
+      weekAvg: (avg) => `[Fixed] This week: need ${avg}/day`,
+      weekAvgLive: (avg) => `[Live] This week: need ${avg}/day`,
       weekDone: "Weekly goal reached ✓",
       shortWeek: (t) => `This week short by ${t}`,
       thisWeek: (range) => `This week (${range})`,
@@ -222,6 +226,77 @@
 
   function persist() {
     chrome.storage.sync.set(settings);
+  }
+
+  // ---------- 패널 위치 저장/불러오기 (기기별로 다르므로 storage.local 사용) ----------
+
+  function loadPanelPos() {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(["lt42PanelPos"], (raw) => {
+        resolve(raw && raw.lt42PanelPos ? raw.lt42PanelPos : null);
+      });
+    });
+  }
+
+  function savePanelPos(x, y) {
+    chrome.storage.local.set({ lt42PanelPos: { x, y } });
+  }
+
+  function clampPos(panel, x, y) {
+    const maxX = window.innerWidth - panel.offsetWidth;
+    const maxY = window.innerHeight - panel.offsetHeight;
+    return {
+      x: Math.min(Math.max(0, x), Math.max(0, maxX)),
+      y: Math.min(Math.max(0, y), Math.max(0, maxY)),
+    };
+  }
+
+  function applyPos(panel, x, y) {
+    panel.style.left = x + "px";
+    panel.style.top = y + "px";
+    panel.style.right = "auto";
+    panel.style.bottom = "auto";
+  }
+
+  // 헤더를 드래그해서 패널을 옮길 수 있게 함 (접힘/펼침 상태 모두 지원)
+  // setPointerCapture 사용: 페이지(SPA)나 다른 확장이 document 레벨에서
+  // 포인터 이벤트를 가로채도 드래그가 끊기지 않는다.
+  function makeDraggable(panel) {
+    const header = panel.querySelector(".lt42-header");
+    let dragging = false;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    header.addEventListener("pointerdown", (e) => {
+      if (e.target.closest("button")) return; // 헤더 위 버튼은 드래그로 처리하지 않음
+      dragging = true;
+      const rect = panel.getBoundingClientRect();
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+      applyPos(panel, rect.left, rect.top);
+      panel.classList.add("lt42-dragging");
+      header.setPointerCapture(e.pointerId); // ★ 이후 포인터 이벤트를 헤더로 직행
+      e.preventDefault();
+    });
+
+    header.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      const { x, y } = clampPos(panel, e.clientX - offsetX, e.clientY - offsetY);
+      applyPos(panel, x, y);
+    });
+
+    const endDrag = (e) => {
+      if (!dragging) return;
+      dragging = false;
+      panel.classList.remove("lt42-dragging");
+      if (header.hasPointerCapture && header.hasPointerCapture(e.pointerId)) {
+        header.releasePointerCapture(e.pointerId);
+      }
+      const rect = panel.getBoundingClientRect();
+      savePanelPos(rect.left, rect.top);
+    };
+    header.addEventListener("pointerup", endDrag);
+    header.addEventListener("pointercancel", endDrag);
   }
 
   // ---------- 데이터 정규화 ----------
@@ -429,6 +504,7 @@
 
     syncSettingsInputs(panel);
     syncChromeText(panel);
+    makeDraggable(panel);
 
     // 언어 토글
     panel.querySelector(".lt42-lang").addEventListener("click", () => {
@@ -586,11 +662,14 @@
     const periodLine = l.period(elapsedDays, totalDays);
 
     // 남은 날짜 / 하루 평균: 제외 요일·날짜를 뺀 "실제 갈 수 있는 날" 기준.
-    // 하루 평균은 "어제까지 누적"을 기준으로 계산한다 (부족분에 오늘 한 시간을
-    // 되돌려서 나눔). 그래서 의미가 "오늘 포함 매일 X씩"으로 고정되고,
-    // 오늘 시간을 채워도 숫자가 실시간으로 줄어들지 않는다.
+    //  [고정]  = (부족 + 오늘 로그타임) ÷ 남은 날. 어제까지 누적 기준이라
+    //           하루 종일 안 변하는 목표치. "오늘 포함 매일 X씩".
+    //  [라이브] = 부족 ÷ 남은 날. 현재 누적 기준이라 오늘 시간을 채울수록
+    //           실시간으로 줄어드는 값. "지금 이 순간부터 매일 X씩".
+    //  오늘 로그타임이 0이면 두 값이 같으므로 라이브는 생략한다.
     let leftLine = "";
     let avgLine = "";
+    let avgLiveLine = "";
     if (daysLeft > 0) {
       const from = today > start ? today : start;
       const effDaysLeft = countDaysExcluding(
@@ -603,14 +682,17 @@
         leftLine = l.leftLine(effDaysLeft);
         // 전체 하루 평균은 총 목표를 직접 설정한 경우에만
         if (mode === "total" && remainSec > 0) {
-          // 어제까지 누적 기준 (고정값, 오늘 얼마를 하든 안 변함)
           avgLine = l.avgLine(fmt(Math.ceil((remainSec + todaySec) / effDaysLeft)));
+          if (todaySec > 0) {
+            avgLiveLine = l.avgLive(fmt(Math.ceil(remainSec / effDaysLeft)));
+          }
         }
       }
     }
 
     // 주 목표 사용 시: 이번 주 누적/부족/하루 평균 (제외 요일·날짜 반영)
     let weekAvgLine = "";
+    let weekAvgLiveLine = "";
     let curWeek = null;
     let curWeekRemain = 0;
     if (wg > 0) {
@@ -625,10 +707,16 @@
             settings.excludeDates
           );
           if (effWeekDays > 0) {
-            // 어제까지 누적 기준: 부족분에 오늘 한 시간을 되돌려서 나눔
+            // [고정] 어제까지 누적 기준
             weekAvgLine = `<span class="lt42-avg">${l.weekAvg(
               fmt(Math.ceil((curWeekRemain + todaySec) / effWeekDays))
             )}</span>`;
+            // [라이브] 현재 누적 기준 (오늘 로그타임이 있을 때만)
+            if (todaySec > 0) {
+              weekAvgLiveLine = `<span class="lt42-avg-live">${l.weekAvgLive(
+                fmt(Math.ceil(curWeekRemain / effWeekDays))
+              )}</span>`;
+            }
           }
         }
       }
@@ -650,6 +738,20 @@
     // 총 목표 + 주 목표 둘 다 있는 경우: 이번 주 달성 표시는 weekAvgLine 자리에
     if (mode === "total" && wg > 0 && curWeek && curWeekRemain === 0) {
       weekAvgLine = `<span class="lt42-ok">${l.weekDone}</span>`;
+      weekAvgLiveLine = "";
+    }
+
+	// 오늘 몫 달성 여부: 오늘 로그타임 >= 라이브 하루 필요량 (모드별 기준)
+    let todayCleared = false;
+    if (mode === "total" && remainSec > 0 && daysLeft > 0) {
+      const from = today > start ? today : start;
+      const eff = countDaysExcluding(from, end, settings.excludeDays, settings.excludeDates);
+      if (eff > 0) todayCleared = todaySec >= remainSec / eff;
+    } else if (mode === "week" && curWeek && curWeekRemain > 0) {
+      const eff = countDaysExcluding(today, curWeek.to, settings.excludeDays, settings.excludeDates);
+      if (eff > 0) todayCleared = todaySec >= curWeekRemain / eff;
+    } else if ((mode === "total" && remainSec === 0) || (mode === "week" && curWeek && curWeekRemain === 0)) {
+      todayCleared = true; // 목표 자체를 달성한 상태
     }
 
     // 상단 값/바 (모드별)
@@ -698,10 +800,12 @@
         }
         <div class="lt42-sub">${periodLine}${leftLine ? ` (${leftLine})` : ""}</div>
         ${mode === "week" && curWeek ? `<div class="lt42-sub">${l.cumul(fmt(doneSec))}</div>` : ""}
-        <div class="lt42-sub">${l.today}: ${fmt(todaySec)}</div>
         ${shortLine ? `<div class="lt42-sub">${shortLine}</div>` : ""}
         ${avgLine ? `<div class="lt42-sub"><span class="lt42-avg">${avgLine}</span></div>` : ""}
+        ${avgLiveLine ? `<div class="lt42-sub"><span class="lt42-avg-live">${avgLiveLine}</span></div>` : ""}
         ${weekAvgLine ? `<div class="lt42-sub">${weekAvgLine}</div>` : ""}
+        ${weekAvgLiveLine ? `<div class="lt42-sub">${weekAvgLiveLine}</div>` : ""}
+        <div class="lt42-sub">${l.today}: <span class="lt42-today${todayCleared ? " lt42-ok" : ""}">${fmt(todaySec)}</span></div>
       </div>
 
       <div class="lt42-weeks">
@@ -749,9 +853,16 @@
 
   async function main() {
     await loadSettings();
-    ensurePanel();
+    const panel = ensurePanel();
     updateLogin();
     render();
+
+    // 저장된 패널 위치 복원
+    const savedPos = await loadPanelPos();
+    if (savedPos) {
+      const { x, y } = clampPos(panel, savedPos.x, savedPos.y);
+      applyPos(panel, x, y);
+    }
 
     let lastPath = location.pathname;
     setInterval(() => {

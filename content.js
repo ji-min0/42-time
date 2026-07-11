@@ -20,7 +20,6 @@
       reached: (h, extra) => ` ${h}시간 달성! (+${extra})`,
       leftLine: (d) => `남은 ${d}일`,
       avgLine: (avg) => `[고정] 하루 평균 ${avg} 필요`,
-      avgLineLive: (avg) => `[실시간] 하루 평균 ${avg} 필요`,
       period: (elapsed, total) => `기간 ${total}일 · 경과 ${elapsed}일`,
       dayNames: ["일", "월", "화", "수", "목", "금", "토"],
       exclDays: "제외 요일",
@@ -54,7 +53,6 @@
       reached: (h, extra) => ` ${h}h reached! (+${extra})`,
       leftLine: (d) => `${d} left`,
       avgLine: (avg) => `[Fixed] Need ${avg} / day`,
-      avgLineLive: (avg) => `[Live] Need ${avg} / day`,
       period: (elapsed, total) => `${total} days total · ${elapsed} elapsed`,
       dayNames: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
       exclDays: "Skip days",
@@ -549,7 +547,6 @@
     // 오늘 시간을 채워도 숫자가 실시간으로 줄어들지 않는다.
     let leftLine = "";
     let avgLine = "";
-    let avgLineLive = "";
     if (daysLeft > 0) {
       const from = today > start ? today : start;
       const effDaysLeft = countDaysExcluding(
@@ -564,8 +561,6 @@
         if (mode === "total" && remainSec > 0) {
           // 어제까지 누적 기준 (고정값, 오늘 얼마를 하든 안 변함)
           avgLine = l.avgLine(fmt(Math.ceil((remainSec + todaySec) / effDaysLeft)));
-          // 실시간 기준 (오늘 로그타임이 늘어날수록 같이 줄어듦)
-          avgLineLive = l.avgLineLive(fmt(Math.ceil(remainSec / effDaysLeft)));
         }
       }
     }
@@ -665,7 +660,6 @@
         <div class="lt42-sub">${l.today}: ${fmt(todaySec)}</div>
         ${shortLine ? `<div class="lt42-sub">${shortLine}</div>` : ""}
         ${avgLine ? `<div class="lt42-sub"><span class="lt42-avg">${avgLine}</span></div>` : ""}
-        ${avgLineLive ? `<div class="lt42-sub"><span class="lt42-avg">${avgLineLive}</span></div>` : ""}
         ${weekAvgLine ? `<div class="lt42-sub">${weekAvgLine}</div>` : ""}
       </div>
 

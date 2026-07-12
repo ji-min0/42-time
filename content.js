@@ -21,8 +21,8 @@
       short: (t) => `부족 ${t}`,
       reached: (h, extra) => ` ${h}시간 달성! (+${extra})`,
       leftLine: (d) => `남은 ${d}일`,
-      avgLine: (avg) => `오늘부터 매일 ${avg}`,
-	  avgLive: (avg) => `지금부터 매일 ${avg}`,
+      avgLine: (avg) => `[총] 오늘부터 매일 ${avg} 필요`,
+	  avgLive: (avg) => `[총] 지금부터 매일 ${avg} 필요`,
       period: (elapsed, total) => `기간 ${total}일 · 경과 ${elapsed}일`,
       dayNames: ["일", "월", "화", "수", "목", "금", "토"],
       exclDays: "제외 요일",
@@ -32,8 +32,8 @@
       weekLabel: (n) => `${n}주차`,
       wgoal: "주 목표(h)",
       attend: (n) => `${n}일`,
-      weekAvg: (avg) => `[고정] 이번 주 하루 평균 ${avg} 필요`,
-      weekAvgLive: (avg) => `[라이브] 이번 주 하루 평균 ${avg} 필요`,
+      weekAvg: (avg) => `[주] 오늘부터 매일 ${avg} 필요`,
+      weekAvgLive: (avg) => `[주] 지금부터 매일 ${avg} 필요`,
       weekDone: "이번 주 목표 달성 ✓",
       shortWeek: (t) => `이번 주 부족 ${t}`,
       thisWeek: (range) => `이번 주 (${range})`,
@@ -58,8 +58,8 @@
       short: (t) => `Short by ${t}`,
       reached: (h, extra) => ` ${h}h reached! (+${extra})`,
       leftLine: (d) => `${d} left`,
-      avgLine: (avg) => `[Fixed] Need ${avg} / day`,
-      avgLive: (avg) => `[Live] Need ${avg} / day`,
+      avgLine: (avg) => `[Total] Need ${avg} / day from today`,
+      avgLive: (avg) => `[Total] Need ${avg} / day from now`,
       period: (elapsed, total) => `${total} days total · ${elapsed} elapsed`,
       dayNames: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
       exclDays: "Skip days",
@@ -69,8 +69,8 @@
       weekLabel: (n) => `W${n}`,
       wgoal: "Wk goal(h)",
       attend: (n) => `${n}d`,
-      weekAvg: (avg) => `[Fixed] This week: need ${avg}/day`,
-      weekAvgLive: (avg) => `[Live] This week: need ${avg}/day`,
+      weekAvg: (avg) => `[Week] need ${avg} / day from today`,
+      weekAvgLive: (avg) => `[Week] need ${avg} / day from now`,
       weekDone: "Weekly goal reached ✓",
       shortWeek: (t) => `This week short by ${t}`,
       thisWeek: (range) => `This week (${range})`,
@@ -695,9 +695,9 @@
     const periodLine = l.period(elapsedDays, totalDays);
 
     // 남은 날짜 / 하루 평균: 제외 요일·날짜를 뺀 "실제 갈 수 있는 날" 기준.
-    //  [고정]  = (부족 + 오늘 로그타임) ÷ 남은 날. 어제까지 누적 기준이라
+    //  [오늘부터]  = (부족 + 오늘 로그타임) ÷ 남은 날. 어제까지 누적 기준이라
     //           하루 종일 안 변하는 목표치. "오늘 포함 매일 X씩".
-    //  [라이브] = 부족 ÷ 남은 날. 현재 누적 기준이라 오늘 시간을 채울수록
+    //  [지금부터] = 부족 ÷ 남은 날. 현재 누적 기준이라 오늘 시간을 채울수록
     //           실시간으로 줄어드는 값. "지금 이 순간부터 매일 X씩".
     //  오늘 로그타임이 0이면 두 값이 같으므로 라이브는 생략한다.
     let leftLine = "";
@@ -740,11 +740,11 @@
             settings.excludeDates
           );
           if (effWeekDays > 0) {
-            // [고정] 어제까지 누적 기준
+            // [오늘부터] 어제까지 누적 기준
             weekAvgLine = `<span class="lt42-avg">${l.weekAvg(
               fmt(Math.ceil((curWeekRemain + todaySec) / effWeekDays))
             )}</span>`;
-            // [라이브] 현재 누적 기준 (오늘 로그타임이 있을 때만)
+            // [지금부터] 현재 누적 기준 (오늘 로그타임이 있을 때만)
             if (todaySec > 0) {
               weekAvgLiveLine = `<span class="lt42-avg-live">${l.weekAvgLive(
                 fmt(Math.ceil(curWeekRemain / effWeekDays))

@@ -228,39 +228,59 @@
     chrome.storage.sync.set(settings);
   }
 
-  // ---------- 패널 위치 저장/불러오기 (기기별로 다르므로 storage.local 사용) ----------
+  // ---------- 패널 위치 (기기별로 다르므로 storage.local 사용) ----------
+  // 우하단(right/bottom) 기준으로 저장·배치한다.
+  //  - 접기/펼치기 시 우하단 모서리가 고정점이 되어 자연스럽게 접힘
+  //  - 창 크기가 바뀌거나 새 창에서 패널이 화면 밖이면 기본 위치(우하단)로 복귀
+
+  const DEFAULT_POS = { right: 16, bottom: 16 };
 
   function loadPanelPos() {
     return new Promise((resolve) => {
       chrome.storage.local.get(["lt42PanelPos"], (raw) => {
-        resolve(raw && raw.lt42PanelPos ? raw.lt42PanelPos : null);
+        const p = raw && raw.lt42PanelPos;
+        // 새 형식 {right, bottom}만 사용. 옛 {x, y} 형식은 무시 → 기본 위치로 시작
+        if (p && Number.isFinite(p.right) && Number.isFinite(p.bottom)) resolve(p);
+        else resolve(null);
       });
     });
   }
 
-  function savePanelPos(x, y) {
-    chrome.storage.local.set({ lt42PanelPos: { x, y } });
+  function savePanelPos(right, bottom) {
+    chrome.storage.local.set({ lt42PanelPos: { right, bottom } });
   }
 
-  function clampPos(panel, x, y) {
-    const maxX = window.innerWidth - panel.offsetWidth;
-    const maxY = window.innerHeight - panel.offsetHeight;
-    return {
-      x: Math.min(Math.max(0, x), Math.max(0, maxX)),
-      y: Math.min(Math.max(0, y), Math.max(0, maxY)),
-    };
+  // 우하단 기준 배치
+  function applyPos(panel, right, bottom) {
+    panel.style.right = right + "px";
+    panel.style.bottom = bottom + "px";
+    panel.style.left = "auto";
+    panel.style.top = "auto";
   }
 
-  function applyPos(panel, x, y) {
-    panel.style.left = x + "px";
-    panel.style.top = y + "px";
-    panel.style.right = "auto";
-    panel.style.bottom = "auto";
+  // 패널이 화면 밖으로 (일부라도) 나갔는지
+  function isOffscreen(panel) {
+    const r = panel.getBoundingClientRect();
+    return (
+      r.left < 0 ||
+      r.top < 0 ||
+      r.right > window.innerWidth ||
+      r.bottom > window.innerHeight
+    );
+  }
+
+  // 화면 밖이면 기본 위치(우하단)로 복귀
+  function resetIfOffscreen(panel) {
+    if (isOffscreen(panel)) {
+      applyPos(panel, DEFAULT_POS.right, DEFAULT_POS.bottom);
+      savePanelPos(DEFAULT_POS.right, DEFAULT_POS.bottom);
+    }
   }
 
   // 헤더를 드래그해서 패널을 옮길 수 있게 함 (접힘/펼침 상태 모두 지원)
   // setPointerCapture 사용: 페이지(SPA)나 다른 확장이 document 레벨에서
   // 포인터 이벤트를 가로채도 드래그가 끊기지 않는다.
+  // 드래그 중에는 left/top으로 따라가고, 놓는 순간 right/bottom으로 변환 저장.
   function makeDraggable(panel) {
     const header = panel.querySelector(".lt42-header");
     let dragging = false;
@@ -273,7 +293,6 @@
       const rect = panel.getBoundingClientRect();
       offsetX = e.clientX - rect.left;
       offsetY = e.clientY - rect.top;
-      applyPos(panel, rect.left, rect.top);
       panel.classList.add("lt42-dragging");
       header.setPointerCapture(e.pointerId); // ★ 이후 포인터 이벤트를 헤더로 직행
       e.preventDefault();
@@ -281,8 +300,18 @@
 
     header.addEventListener("pointermove", (e) => {
       if (!dragging) return;
-      const { x, y } = clampPos(panel, e.clientX - offsetX, e.clientY - offsetY);
-      applyPos(panel, x, y);
+      const x = Math.min(
+        Math.max(0, e.clientX - offsetX),
+        Math.max(0, window.innerWidth - panel.offsetWidth)
+      );
+      const y = Math.min(
+        Math.max(0, e.clientY - offsetY),
+        Math.max(0, window.innerHeight - panel.offsetHeight)
+      );
+      panel.style.left = x + "px";
+      panel.style.top = y + "px";
+      panel.style.right = "auto";
+      panel.style.bottom = "auto";
     });
 
     const endDrag = (e) => {
@@ -292,8 +321,12 @@
       if (header.hasPointerCapture && header.hasPointerCapture(e.pointerId)) {
         header.releasePointerCapture(e.pointerId);
       }
+      // 놓는 순간 right/bottom 기준으로 변환해서 적용 + 저장
       const rect = panel.getBoundingClientRect();
-      savePanelPos(rect.left, rect.top);
+      const right = Math.max(0, window.innerWidth - rect.right);
+      const bottom = Math.max(0, window.innerHeight - rect.bottom);
+      applyPos(panel, right, bottom);
+      savePanelPos(right, bottom);
     };
     header.addEventListener("pointerup", endDrag);
     header.addEventListener("pointercancel", endDrag);
@@ -857,12 +890,13 @@
     updateLogin();
     render();
 
-    // 저장된 패널 위치 복원
+    // 저장된 패널 위치 복원 (화면 밖이면 우하단 기본 위치로)
     const savedPos = await loadPanelPos();
-    if (savedPos) {
-      const { x, y } = clampPos(panel, savedPos.x, savedPos.y);
-      applyPos(panel, x, y);
-    }
+    if (savedPos) applyPos(panel, savedPos.right, savedPos.bottom);
+    resetIfOffscreen(panel);
+
+    // 창 크기가 바뀌어 패널이 화면 밖으로 나가면 우하단으로 복귀
+    window.addEventListener("resize", () => resetIfOffscreen(panel));
 
     let lastPath = location.pathname;
     setInterval(() => {

@@ -124,10 +124,11 @@
 .lt42-warn { color: var(--lt42-warn); font-weight: 600; }
 .lt42-ok { color: var(--lt42-ok); font-weight: 600; }
 .lt42-fail { color: var(--lt42-fail); font-weight: 600; }
-.lt42-avg { color: var(--lt42-blue-soft); font-weight: 400; opacity: 0.75; }
+.lt42-avg { color: var(--lt42-blue); font-weight: 700; }
 .lt42-avg-live { color: var(--lt42-blue); font-weight: 700; }
 .lt42-today { color: var(--lt42-text); font-weight: 700; }
 .lt42-today.lt42-ok { color: var(--lt42-ok); }
+.lt42-today-label { font-weight: 700; }
 
 .lt42-mono {
   font-family: "SF Mono", Consolas, monospace;
@@ -197,6 +198,17 @@
   color: var(--lt42-text-dim);
 }
 
+.lt42-row-full {
+  width: 100%;
+}
+
+.lt42-pair-row {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  align-items: center;
+}
+
 .lt42-settings input {
   background: var(--lt42-bg-input);
   color: var(--lt42-text);
@@ -207,6 +219,15 @@
   color-scheme: dark;
 }
 .lt42-settings input[type="number"] { width: 52px; }
+
+.lt42-settings select {
+  background: var(--lt42-bg-input);
+  color: var(--lt42-text);
+  border: 1px solid var(--lt42-border-input);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 12px;
+}
 
 .lt42-settings input.lt42-invalid {
   border-color: var(--lt42-fail);

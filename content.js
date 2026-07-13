@@ -8,6 +8,8 @@
     excludeDates: [], // 제외 날짜: ["2026-07-15", ...]
     weeklyGoal: 0, // 주차별 목표 시간(h). 0이면 표시 안 함 (경북대 현장실습: 40)
 	theme: "", // "light" | "dark" | ""(시스템 따라감)
+	avgModeTotal: "fixed", // "both" | "live" | "fixed" | "none" — [총] 하루 평균 줄 표시 방식
+	avgModeWeek: "fixed",  // "both" | "live" | "fixed" | "none" — [주] 하루 평균 줄 표시 방식
   };
 
   const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -47,8 +49,11 @@
       goal: "목표(h)",
       settingsTitle: "설정",
       collapse: "접기",
-      langBtn: "EN", // 누르면 전환될 언어 표시
+      langBtn: "EN",
       dur: (h, min) => `${h}시간 ${String(min).padStart(2, "0")}분`,
+      avgModeTotalLbl: "총 평균",
+      avgModeWeekLbl: "주 평균",
+      avgModeOpts: { both: "둘 다", live: "지금", fixed: "오늘", none: "숨김" },
     },
     en: {
       waiting:
@@ -87,29 +92,28 @@
       collapse: "Collapse",
       langBtn: "한",
       dur: (h, min) => `${h}h ${String(min).padStart(2, "0")}m`,
+      avgModeTotalLbl: "Total avg",
+      avgModeWeekLbl: "Week avg",
+      avgModeOpts: { both: "Both", live: "Live only", fixed: "Fixed only", none: "Hide" },
     },
   };
 
-  let statsByDate = null; // { "2026-07-01": seconds, ... }
+  let statsByDate = null;
   let settings = { ...DEFAULTS };
   let currentLogin = null;
   function findLogin() {
-  // 1순위: 프로필 상세 영역의 로그인 (p.text-sm)
   const p = document.querySelector("p.text-sm");
   if (p) {
     const text = p.textContent.trim();
     if (text) return text;
   }
 
-  // 2순위: URL의 /users/{login}
   const urlMatch = location.pathname.match(/\/users\/([a-zA-Z0-9_-]+)/);
   if (urlMatch) return urlMatch[1];
 
-  // 3순위: 네비바의 내 계정 정보 (항상 내 id)
   const meEl = document.querySelector("span[data-login]");
   if (meEl) return meEl.getAttribute("data-login");
 
-  // 4순위(백업)
   const el = document.querySelector("[data-login]");
   if (el) return el.getAttribute("data-login");
   const link = document.querySelector('a[href*="/users/"]');
@@ -129,8 +133,6 @@
   }
 
   const L = () => STR[settings.lang] || STR.ko;
-
-  // ---------- 유틸 ----------
 
   function durationToSeconds(str) {
     const m = String(str).match(/^(\d+):(\d{1,2}):(\d{1,2})(?:\.\d+)?$/);
@@ -175,8 +177,6 @@
     return Math.round((to - from) / 86400000) + 1;
   }
 
-  // 제외 요일(excludedDays: [0~6])과 제외 날짜(excludedDates: ISO 문자열)를
-  // 뺀 날짜 수 (양끝 포함)
   function countDaysExcluding(fromISO, toISO, excludedDays, excludedDates) {
     const daySet = new Set(excludedDays || []);
     const dateSet = new Set(excludedDates || []);
@@ -190,7 +190,6 @@
     return count;
   }
 
-  // ---------- 설정 ----------
   function sanitizeSettings(raw, base = DEFAULTS) {
     const s = { ...base };
     if (raw && DATE_RE.test(raw.piscineStart || "")) s.piscineStart = raw.piscineStart;
@@ -214,6 +213,9 @@
       if (Number.isFinite(w) && w >= 0) s.weeklyGoal = w;
     }
 	if (raw && (raw.theme === "light" || raw.theme === "dark")) s.theme = raw.theme;
+	const avgModes = ["both", "live", "fixed", "none"];
+	if (raw && avgModes.includes(raw.avgModeTotal)) s.avgModeTotal = raw.avgModeTotal;
+	if (raw && avgModes.includes(raw.avgModeWeek)) s.avgModeWeek = raw.avgModeWeek;
     return s;
   }
 
@@ -230,11 +232,9 @@
     chrome.storage.sync.set(settings);
   }
 
-// ---------- 테마 ----------
-
   function isLightTheme() {
     if (settings.theme) return settings.theme === "light";
-    return window.matchMedia("(prefers-color-scheme: light)").matches; // 시스템 설정
+    return window.matchMedia("(prefers-color-scheme: light)").matches;
   }
 
   function applyTheme(panel) {
@@ -243,18 +243,12 @@
     if (btn) btn.textContent = isLightTheme() ? "⛧" : "☀";
   }
 
-  // ---------- 패널 위치 (기기별로 다르므로 storage.local 사용) ----------
-  // 우하단(right/bottom) 기준으로 저장·배치한다.
-  //  - 접기/펼치기 시 우하단 모서리가 고정점이 되어 자연스럽게 접힘
-  //  - 창 크기가 바뀌거나 새 창에서 패널이 화면 밖이면 기본 위치(우하단)로 복귀
-
   const DEFAULT_POS = { right: 16, bottom: 16 };
 
   function loadPanelPos() {
     return new Promise((resolve) => {
       chrome.storage.local.get(["lt42PanelPos"], (raw) => {
         const p = raw && raw.lt42PanelPos;
-        // 새 형식 {right, bottom}만 사용. 옛 {x, y} 형식은 무시 → 기본 위치로 시작
         if (p && Number.isFinite(p.right) && Number.isFinite(p.bottom)) resolve(p);
         else resolve(null);
       });
@@ -265,7 +259,6 @@
     chrome.storage.local.set({ lt42PanelPos: { right, bottom } });
   }
 
-  // 우하단 기준 배치
   function applyPos(panel, right, bottom) {
     panel.style.right = right + "px";
     panel.style.bottom = bottom + "px";
@@ -273,7 +266,6 @@
     panel.style.top = "auto";
   }
 
-  // 패널이 화면 밖으로 (일부라도) 나갔는지
   function isOffscreen(panel) {
     const r = panel.getBoundingClientRect();
     return (
@@ -284,7 +276,6 @@
     );
   }
 
-  // 화면 밖이면 기본 위치(우하단)로 복귀
   function resetIfOffscreen(panel) {
     if (isOffscreen(panel)) {
       applyPos(panel, DEFAULT_POS.right, DEFAULT_POS.bottom);
@@ -292,10 +283,6 @@
     }
   }
 
-  // 헤더를 드래그해서 패널을 옮길 수 있게 함 (접힘/펼침 상태 모두 지원)
-  // setPointerCapture 사용: 페이지(SPA)나 다른 확장이 document 레벨에서
-  // 포인터 이벤트를 가로채도 드래그가 끊기지 않는다.
-  // 드래그 중에는 left/top으로 따라가고, 놓는 순간 right/bottom으로 변환 저장.
   function makeDraggable(panel) {
     const header = panel.querySelector(".lt42-header");
     let dragging = false;
@@ -303,13 +290,13 @@
     let offsetY = 0;
 
     header.addEventListener("pointerdown", (e) => {
-      if (e.target.closest("button")) return; // 헤더 위 버튼은 드래그로 처리하지 않음
+      if (e.target.closest("button")) return;
       dragging = true;
       const rect = panel.getBoundingClientRect();
       offsetX = e.clientX - rect.left;
       offsetY = e.clientY - rect.top;
       panel.classList.add("lt42-dragging");
-      header.setPointerCapture(e.pointerId); // ★ 이후 포인터 이벤트를 헤더로 직행
+      header.setPointerCapture(e.pointerId);
       e.preventDefault();
     });
 
@@ -336,7 +323,6 @@
       if (header.hasPointerCapture && header.hasPointerCapture(e.pointerId)) {
         header.releasePointerCapture(e.pointerId);
       }
-      // 놓는 순간 right/bottom 기준으로 변환해서 적용 + 저장
       const rect = panel.getBoundingClientRect();
       const right = Math.max(0, window.innerWidth - rect.right);
       const bottom = Math.max(0, window.innerHeight - rect.bottom);
@@ -346,8 +332,6 @@
     header.addEventListener("pointerup", endDrag);
     header.addEventListener("pointercancel", endDrag);
   }
-
-  // ---------- 데이터 정규화 ----------
 
   function normalizeStatsMap(raw) {
     const out = {};
@@ -398,8 +382,6 @@
     }
   });
 
-  // ---------- 집계 ----------
-
   function rangeTotal(startISO, endISO) {
     let total = 0;
     for (const [date, sec] of Object.entries(statsByDate)) {
@@ -429,9 +411,6 @@
     return result;
   }
 
-  // 주차별 합계: 일~토 달력 주 기준, 라피신 기간 내로 클리핑.
-  // 첫 주는 시작일~그 주 토요일, 마지막 주는 일요일~종료일이 된다.
-  // (경북대 "마지막 주 일~금" 규칙은 종료일을 금요일로 두면 자동 반영)
   function piscineWeeklyTotals(startISO, endISO) {
     const result = [];
     let cursor = new Date(startISO + "T00:00:00");
@@ -440,7 +419,7 @@
 
     while (cursor <= endDate) {
       const weekEnd = new Date(cursor);
-      weekEnd.setDate(weekEnd.getDate() + (6 - weekEnd.getDay())); // 이번 주 토요일
+      weekEnd.setDate(weekEnd.getDate() + (6 - weekEnd.getDay()));
       const to = weekEnd < endDate ? weekEnd : endDate;
 
       const fromISO = isoDate(cursor);
@@ -454,12 +433,11 @@
       });
 
       cursor = new Date(to);
-      cursor.setDate(cursor.getDate() + 1); // 다음 주 일요일
+      cursor.setDate(cursor.getDate() + 1);
     }
     return result;
   }
 
-  // 범위 내에서 로그타임이 1분 이상 있는 날 수 (출석 일수)
   function attendanceDays(fromISO, toISO) {
     let count = 0;
     for (const [date, sec] of Object.entries(statsByDate)) {
@@ -467,8 +445,6 @@
     }
     return count;
   }
-
-  // ---------- 설정 적용 (즉시 반영 + 자동 저장) ----------
 
   function applySettingsFromInputs(panel) {
     const startInput = panel.querySelector(".lt42-start");
@@ -487,10 +463,9 @@
         lang: settings.lang,
         excludeDays,
       },
-      settings // 검증 실패 시 기본값이 아닌 현재 값 유지
+      settings
     );
 
-    // 시작 > 종료면 적용하지 않고 입력칸에 경고 표시
     const invalid = next.piscineStart > next.piscineEnd;
     startInput.classList.toggle("lt42-invalid", invalid);
     endInput.classList.toggle("lt42-invalid", invalid);
@@ -503,8 +478,6 @@
     );
     render();
   }
-
-  // ---------- 렌더링 ----------
 
   function ensurePanel() {
     let panel = document.getElementById("lt42-panel");
@@ -529,10 +502,30 @@
           <div class="lt42-sub lt42-waiting"></div>
         </div>
         <div class="lt42-settings" hidden>
-          <label><span class="lt42-lbl-start"></span> <input type="date" class="lt42-start"></label>
-          <label><span class="lt42-lbl-end"></span> <input type="date" class="lt42-end"></label>
-          <label><span class="lt42-lbl-goal"></span> <input type="number" class="lt42-target" min="0" placeholder="0"></label>
-          <label><span class="lt42-lbl-wgoal"></span> <input type="number" class="lt42-wgoal" min="0" placeholder="0"></label>
+          <label class="lt42-row-full"><span class="lt42-lbl-start"></span> <input type="date" class="lt42-start"></label>
+          <label class="lt42-row-full"><span class="lt42-lbl-end"></span> <input type="date" class="lt42-end"></label>
+          <div class="lt42-pair-row">
+            <label><span class="lt42-lbl-goal"></span> <input type="number" class="lt42-target" min="0" placeholder="0"></label>
+            <label><span class="lt42-lbl-wgoal"></span> <input type="number" class="lt42-wgoal" min="0" placeholder="0"></label>
+          </div>
+          <div class="lt42-pair-row">
+            <label><span class="lt42-lbl-avgmode-total"></span>
+              <select class="lt42-avgmode-total">
+                <option value="both"></option>
+                <option value="live"></option>
+                <option value="fixed"></option>
+                <option value="none"></option>
+              </select>
+            </label>
+            <label><span class="lt42-lbl-avgmode-week"></span>
+              <select class="lt42-avgmode-week">
+                <option value="both"></option>
+                <option value="live"></option>
+                <option value="fixed"></option>
+                <option value="none"></option>
+              </select>
+            </label>
+          </div>
           <div class="lt42-days-row">
             <span class="lt42-lbl-days"></span>
             <span class="lt42-day-btns">
@@ -555,7 +548,6 @@
     syncChromeText(panel);
     makeDraggable(panel);
 
-    // 언어 토글
     panel.querySelector(".lt42-lang").addEventListener("click", () => {
       settings.lang = settings.lang === "ko" ? "en" : "ko";
       persist();
@@ -563,7 +555,6 @@
       render();
     });
 
-// 테마 토글 (현재 표시 기준 반대로 고정)
     panel.querySelector(".lt42-theme").addEventListener("click", () => {
       settings.theme = isLightTheme() ? "dark" : "light";
       persist();
@@ -571,9 +562,20 @@
     });
     applyTheme(panel);
 
-    // 시스템 테마가 바뀌면 (수동 고정 안 한 경우만) 따라감
     window.matchMedia("(prefers-color-scheme: light)")
       .addEventListener("change", () => { if (!settings.theme) applyTheme(panel); });
+
+    panel.querySelector(".lt42-avgmode-total").addEventListener("change", (e) => {
+      settings.avgModeTotal = e.target.value;
+      persist();
+      render();
+    });
+
+    panel.querySelector(".lt42-avgmode-week").addEventListener("change", (e) => {
+      settings.avgModeWeek = e.target.value;
+      persist();
+      render();
+    });
 
     panel.querySelector(".lt42-gear").addEventListener("click", () => {
       const s = panel.querySelector(".lt42-settings");
@@ -586,14 +588,12 @@
       e.target.textContent = panel.classList.contains("lt42-collapsed") ? "+" : "−";
     });
 
-    // 변경 즉시 반영: 어떤 입력이든 바뀌면 바로 재계산 + 저장
     for (const sel of [".lt42-start", ".lt42-end", ".lt42-target", ".lt42-wgoal"]) {
       const input = panel.querySelector(sel);
       input.addEventListener("change", () => applySettingsFromInputs(panel));
       input.addEventListener("input", () => applySettingsFromInputs(panel));
     }
 
-    // 요일 토글: 누르면 켜짐/꺼짐 후 즉시 반영
     for (const btn of panel.querySelectorAll(".lt42-day")) {
       btn.addEventListener("click", () => {
         btn.classList.toggle("lt42-day-on");
@@ -601,7 +601,6 @@
       });
     }
 
-    // 제외 날짜 추가 (+ 버튼 또는 날짜 선택 후 Enter)
     const addExclDate = () => {
       const input = panel.querySelector(".lt42-excl-date");
       const v = input.value;
@@ -617,7 +616,6 @@
       if (e.key === "Enter") addExclDate();
     });
 
-    // 칩의 × 클릭으로 제거 (이벤트 위임)
     panel.querySelector(".lt42-date-chips").addEventListener("click", (e) => {
       const chip = e.target.closest(".lt42-chip");
       if (!chip) return;
@@ -632,12 +630,13 @@
     return panel;
   }
 
-  // 입력칸 값을 현재 설정으로 동기화 (설정창을 열 때 / 초기화할 때만)
   function syncSettingsInputs(panel) {
     panel.querySelector(".lt42-start").value = settings.piscineStart;
     panel.querySelector(".lt42-end").value = settings.piscineEnd;
     panel.querySelector(".lt42-target").value = settings.targetHours || "";
     panel.querySelector(".lt42-wgoal").value = settings.weeklyGoal || "";
+    panel.querySelector(".lt42-avgmode-total").value = settings.avgModeTotal;
+    panel.querySelector(".lt42-avgmode-week").value = settings.avgModeWeek;
     for (const btn of panel.querySelectorAll(".lt42-day")) {
       btn.classList.toggle(
         "lt42-day-on",
@@ -647,7 +646,6 @@
     renderDateChips(panel);
   }
 
-  // 제외 날짜 칩 목록 렌더링 (클릭하면 제거)
   function renderDateChips(panel) {
     const box = panel.querySelector(".lt42-date-chips");
     box.innerHTML = settings.excludeDates
@@ -658,7 +656,6 @@
       .join("");
   }
 
-  // 언어에 따라 고정 UI 텍스트 갱신
   function syncChromeText(panel) {
     const l = L();
     panel.querySelector(".lt42-lang").textContent = l.langBtn;
@@ -668,6 +665,11 @@
     panel.querySelector(".lt42-lbl-end").textContent = l.end;
     panel.querySelector(".lt42-lbl-goal").textContent = l.goal;
     panel.querySelector(".lt42-lbl-wgoal").textContent = l.wgoal;
+    panel.querySelector(".lt42-lbl-avgmode-total").textContent = l.avgModeTotalLbl;
+    panel.querySelector(".lt42-lbl-avgmode-week").textContent = l.avgModeWeekLbl;
+    for (const opt of panel.querySelectorAll(".lt42-avgmode-total option, .lt42-avgmode-week option")) {
+      opt.textContent = l.avgModeOpts[opt.value];
+    }
     panel.querySelector(".lt42-lbl-days").textContent = l.exclDays;
     panel.querySelector(".lt42-lbl-dates").textContent = l.exclDates;
     for (const btn of panel.querySelectorAll(".lt42-day")) {
@@ -682,7 +684,6 @@
     const content = panel.querySelector(".lt42-content");
     const l = L();
 
-    // 데이터 유무와 무관하게 로그인 표시는 항상 갱신
     panel.querySelector(".lt42-title").textContent = currentLogin
 	  ? l.titleWithLogin(currentLogin)
 	  : l.titleDefault;
@@ -695,15 +696,10 @@
     const { piscineStart: start, piscineEnd: end } = settings;
     const today = todayISO();
 
-    // 주차/월별은 목표 계산에 필요하므로 먼저 집계
     const months = piscineMonthlyTotals(start, end);
     const weeks = piscineWeeklyTotals(start, end);
-    const wg = settings.weeklyGoal; // 0이면 주 목표 미사용
+    const wg = settings.weeklyGoal;
 
-    // 표시 모드: 총 목표 직접 설정 > 주 목표만 > 없음
-    //  - total: 상단 값/바 = 전체 누적/총 목표
-    //  - week : 상단 값/바 = 이번 주 누적/주 목표 (매주 리셋)
-    //  - none : 값만, 바 없음
     const mode = settings.targetHours > 0 ? "total" : wg > 0 ? "week" : "none";
     const targetHours = settings.targetHours;
     const targetSec = targetHours * 3600;
@@ -711,23 +707,14 @@
     const doneSec = rangeTotal(start, end);
     const remainSec = Math.max(0, targetSec - doneSec);
 
-    // 오늘 로그타임 (하루 평균 계산에 필요하므로 먼저 계산)
     const todaySec = statsByDate[today] || 0;
 
-    // 기간 요약 (시작일을 바꾸면 전체·경과가 바로 변함)
-    //  전체 = 시작~종료, 남은 = max(오늘,시작)~종료 (오늘 포함), 경과 = 전체 - 남은
     const totalDays = daysBetweenInclusive(start, end);
     const daysLeft =
       today > end ? 0 : daysBetweenInclusive(today > start ? today : start, end);
     const elapsedDays = totalDays - daysLeft;
     const periodLine = l.period(elapsedDays, totalDays);
 
-    // 남은 날짜 / 하루 평균: 제외 요일·날짜를 뺀 "실제 갈 수 있는 날" 기준.
-    //  [오늘부터]  = (부족 + 오늘 로그타임) ÷ 남은 날. 어제까지 누적 기준이라
-    //           하루 종일 안 변하는 목표치. "오늘 포함 매일 X씩".
-    //  [지금부터] = 부족 ÷ 남은 날. 현재 누적 기준이라 오늘 시간을 채울수록
-    //           실시간으로 줄어드는 값. "지금 이 순간부터 매일 X씩".
-    //  오늘 로그타임이 0이면 두 값이 같으므로 라이브는 생략한다.
     let leftLine = "";
     let avgLine = "";
     let avgLiveLine = "";
@@ -741,17 +728,17 @@
       );
       if (effDaysLeft > 0) {
         leftLine = l.leftLine(effDaysLeft);
-        // 전체 하루 평균은 총 목표를 직접 설정한 경우에만
         if (mode === "total" && remainSec > 0) {
-          avgLine = l.avgLine(fmt(Math.ceil((remainSec + todaySec) / effDaysLeft)));
-          if (todaySec > 0) {
+          if (settings.avgModeTotal === "fixed" || settings.avgModeTotal === "both") {
+            avgLine = l.avgLine(fmt(Math.ceil((remainSec + todaySec) / effDaysLeft)));
+          }
+          if (todaySec > 0 && (settings.avgModeTotal === "live" || settings.avgModeTotal === "both")) {
             avgLiveLine = l.avgLive(fmt(Math.ceil(remainSec / effDaysLeft)));
           }
         }
       }
     }
 
-    // 주 목표 사용 시: 이번 주 누적/부족/하루 평균 (제외 요일·날짜 반영)
     let weekAvgLine = "";
     let weekAvgLiveLine = "";
     let curWeek = null;
@@ -768,12 +755,12 @@
             settings.excludeDates
           );
           if (effWeekDays > 0) {
-            // [오늘부터] 어제까지 누적 기준
-            weekAvgLine = `<span class="lt42-avg">${l.weekAvg(
-              fmt(Math.ceil((curWeekRemain + todaySec) / effWeekDays))
-            )}</span>`;
-            // [지금부터] 현재 누적 기준 (오늘 로그타임이 있을 때만)
-            if (todaySec > 0) {
+            if (settings.avgModeWeek === "fixed" || settings.avgModeWeek === "both") {
+              weekAvgLine = `<span class="lt42-avg">${l.weekAvg(
+                fmt(Math.ceil((curWeekRemain + todaySec) / effWeekDays))
+              )}</span>`;
+            }
+            if (todaySec > 0 && (settings.avgModeWeek === "live" || settings.avgModeWeek === "both")) {
               weekAvgLiveLine = `<span class="lt42-avg-live">${l.weekAvgLive(
                 fmt(Math.ceil(curWeekRemain / effWeekDays))
               )}</span>`;
@@ -783,7 +770,6 @@
       }
     }
 
-    // 부족/달성 줄 (모드별)
     let shortLine = "";
     if (mode === "total") {
       shortLine =
@@ -796,13 +782,11 @@
           ? `<span class="lt42-ok">${l.weekDone}</span>`
           : `<span class="lt42-warn">${l.shortWeek(fmt(curWeekRemain))}</span>`;
     }
-    // 총 목표 + 주 목표 둘 다 있는 경우: 이번 주 달성 표시는 weekAvgLine 자리에
     if (mode === "total" && wg > 0 && curWeek && curWeekRemain === 0) {
       weekAvgLine = `<span class="lt42-ok">${l.weekDone}</span>`;
       weekAvgLiveLine = "";
     }
 
-	// 오늘 몫 달성 여부: 오늘 로그타임 >= 라이브 하루 필요량 (모드별 기준)
     let todayCleared = false;
     if (mode === "total" && remainSec > 0 && daysLeft > 0) {
       const from = today > start ? today : start;
@@ -812,13 +796,12 @@
       const eff = countDaysExcluding(today, curWeek.to, settings.excludeDays, settings.excludeDates);
       if (eff > 0) todayCleared = todaySec >= curWeekRemain / eff;
     } else if ((mode === "total" && remainSec === 0) || (mode === "week" && curWeek && curWeekRemain === 0)) {
-      todayCleared = true; // 목표 자체를 달성한 상태
+      todayCleared = true;
     }
 
-    // 상단 값/바 (모드별)
     let headLabel = `${l.piscine} ${mmdd(start)} ~ ${mmdd(end)}`;
     let headValue = fmt(doneSec);
-    let barPct = -1; // 음수면 바 없음
+    let barPct = -1;
     let barDone = false;
     if (mode === "total") {
       headValue = `${fmt(doneSec)} / ${targetHours}h`;
@@ -831,7 +814,6 @@
       barDone = curWeekRemain === 0;
     }
 
-    // 접었을 때 헤더 요약 (모드별)
     const summary = panel.querySelector(".lt42-summary");
     if (mode === "total") {
       summary.textContent = `${fmtShort(doneSec)} / ${targetHours}h`;
@@ -866,7 +848,7 @@
         ${avgLiveLine ? `<div class="lt42-sub"><span class="lt42-avg-live">${avgLiveLine}</span></div>` : ""}
         ${weekAvgLine ? `<div class="lt42-sub">${weekAvgLine}</div>` : ""}
         ${weekAvgLiveLine ? `<div class="lt42-sub">${weekAvgLiveLine}</div>` : ""}
-        <div class="lt42-sub">${l.today}: <span class="lt42-today${todayCleared ? " lt42-ok" : ""}">${fmt(todaySec)}</span></div>
+        <div class="lt42-sub"><span class="lt42-today-label">${l.today}</span>: <span class="lt42-today${todayCleared ? " lt42-ok" : ""}">${fmt(todaySec)}</span></div>
       </div>
 
       <div class="lt42-weeks">
@@ -910,27 +892,22 @@
     `;
   }
 
-  // ---------- 메인 ----------
-
   async function main() {
     await loadSettings();
     const panel = ensurePanel();
     updateLogin();
     render();
 
-    // 저장된 패널 위치 복원 (화면 밖이면 우하단 기본 위치로)
     const savedPos = await loadPanelPos();
     if (savedPos) applyPos(panel, savedPos.right, savedPos.bottom);
     resetIfOffscreen(panel);
 
-    // 창 크기가 바뀌어 패널이 화면 밖으로 나가면 우하단으로 복귀
     window.addEventListener("resize", () => resetIfOffscreen(panel));
 
     let lastPath = location.pathname;
     setInterval(() => {
       const pathChanged = location.pathname !== lastPath;
       if (pathChanged) lastPath = location.pathname;
-      // URL이 바뀌었거나, 아직 로그인을 못 찾았으면 계속 재시도
       if (pathChanged || !currentLogin) {
         updateLogin();
       }

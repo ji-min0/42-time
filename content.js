@@ -7,6 +7,7 @@
     excludeDays: [], // 제외 요일: 0(일)~6(토)
     excludeDates: [], // 제외 날짜: ["2026-07-15", ...]
     weeklyGoal: 0, // 주차별 목표 시간(h). 0이면 표시 안 함 (경북대 현장실습: 40)
+	theme: "", // "light" | "dark" | ""(시스템 따라감)
   };
 
   const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -212,6 +213,7 @@
       const w = Number(raw.weeklyGoal);
       if (Number.isFinite(w) && w >= 0) s.weeklyGoal = w;
     }
+	if (raw && (raw.theme === "light" || raw.theme === "dark")) s.theme = raw.theme;
     return s;
   }
 
@@ -226,6 +228,19 @@
 
   function persist() {
     chrome.storage.sync.set(settings);
+  }
+
+// ---------- 테마 ----------
+
+  function isLightTheme() {
+    if (settings.theme) return settings.theme === "light";
+    return window.matchMedia("(prefers-color-scheme: light)").matches; // 시스템 설정
+  }
+
+  function applyTheme(panel) {
+    panel.classList.toggle("lt42-light", isLightTheme());
+    const btn = panel.querySelector(".lt42-theme");
+    if (btn) btn.textContent = isLightTheme() ? "⛧" : "☀";
   }
 
   // ---------- 패널 위치 (기기별로 다르므로 storage.local 사용) ----------
@@ -503,6 +518,7 @@
         <span class="lt42-title">⏱ Moulinette Time</span>
         <span class="lt42-summary"></span>
         <span class="lt42-btns">
+		  <button class="lt42-theme"></button>
           <button class="lt42-lang"></button>
           <button class="lt42-gear">⚙</button>
           <button class="lt42-min">−</button>
@@ -546,6 +562,18 @@
       syncChromeText(panel);
       render();
     });
+
+// 테마 토글 (현재 표시 기준 반대로 고정)
+    panel.querySelector(".lt42-theme").addEventListener("click", () => {
+      settings.theme = isLightTheme() ? "dark" : "light";
+      persist();
+      applyTheme(panel);
+    });
+    applyTheme(panel);
+
+    // 시스템 테마가 바뀌면 (수동 고정 안 한 경우만) 따라감
+    window.matchMedia("(prefers-color-scheme: light)")
+      .addEventListener("change", () => { if (!settings.theme) applyTheme(panel); });
 
     panel.querySelector(".lt42-gear").addEventListener("click", () => {
       const s = panel.querySelector(".lt42-settings");

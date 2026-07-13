@@ -46,7 +46,8 @@
   display: none;
 }
 #lt42-panel.lt42-collapsed .lt42-gear,
-#lt42-panel.lt42-collapsed .lt42-lang {
+#lt42-panel.lt42-collapsed .lt42-lang,
+#lt42-panel.lt42-collapsed .lt42-theme {
   display: none;
 }
 #lt42-panel.lt42-collapsed {
@@ -85,7 +86,8 @@
 
 .lt42-gear,
 .lt42-min,
-.lt42-lang {
+.lt42-lang,
+.lt42-theme {
   background: none;
   border: none;
   color: var(--lt42-text-dim);
@@ -94,7 +96,8 @@
   padding: 2px 5px;
   line-height: 1;
 }
-.lt42-lang {
+.lt42-lang,
+.lt42-theme {
   font-size: 11px;
   font-weight: 700;
   border: 1px solid var(--lt42-border-input);
@@ -296,3 +299,33 @@
 }
 #lt42-panel.lt42-collapsed .lt42-summary { display: inline; }
 .lt42-summary.lt42-summary-done { color: var(--lt42-ok); }
+
+/* ---------- 라이트 모드 ---------- */
+
+#lt42-panel.lt42-light {
+  --lt42-bg: #ffffff;
+  --lt42-bg-input: #f3f4f6;
+  --lt42-border: #e5e7eb;
+  --lt42-border-input: #d1d5db;
+  --lt42-text: #1f2937;
+  --lt42-text-dim: #6b7280;
+  --lt42-text-dimmer: #9ca3af;
+  --lt42-accent: #00babc;
+  --lt42-blue: #0284c7;
+  --lt42-blue-soft: #0284c7;
+  --lt42-ok: #16a34a;
+  --lt42-warn: #ffae00;
+  --lt42-fail: #dc2626;
+  --lt42-day-on-bg: #f59e0b;
+  --lt42-day-on-border: #d97706;
+  --lt42-chip-bg: #ffedd5;
+  --lt42-chip-bg-hover: #fed7aa;
+  --lt42-chip-text: #9a3412;
+  --lt42-chip-border: #fdba74;
+  --lt42-btn-bg: #e5e7eb;
+  --lt42-btn-bg-hover: #d1d5db;
+  --lt42-now-bg: rgba(0, 154, 156, 0.12);
+  --lt42-shadow: rgba(0, 0, 0, 0.15);
+}
+
+#lt42-panel.lt42-light .lt42-settings input { color-scheme: light; }

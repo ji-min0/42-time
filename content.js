@@ -338,17 +338,31 @@
     for (const [date, dur] of Object.entries(raw)) {
       out[date] = (out[date] || 0) + durationToSeconds(dur);
     }
+    // 인트라 캘린더 표기(분 단위 절사)에 맞춰 일 단위로 초 버림
+    for (const k of Object.keys(out)) out[k] = Math.floor(out[k] / 60) * 60;
     return out;
   }
 
   function normalizeLocations(arr) {
-    const out = {};
+    const spans = [];
     for (const loc of arr) {
-      const begin = new Date(loc.begin_at);
-      const end = loc.end_at ? new Date(loc.end_at) : new Date();
-      if (isNaN(begin) || isNaN(end) || end <= begin) continue;
-
-      let cursor = new Date(begin);
+      const b = new Date(loc.begin_at);
+      const e = loc.end_at ? new Date(loc.end_at) : new Date();
+      if (!isNaN(b) && !isNaN(e) && e > b) spans.push([b.getTime(), e.getTime()]);
+    }
+    // 겹치는 구간 병합 (동시 세션 이중 집계 방지)
+    spans.sort((a, b) => a[0] - b[0]);
+    const merged = [];
+    for (const [b, e] of spans) {
+      const last = merged[merged.length - 1];
+      if (last && b <= last[1]) last[1] = Math.max(last[1], e);
+      else merged.push([b, e]);
+    }
+    // 자정 기준으로 나눠 날짜별 합산
+    const out = {};
+    for (const [bMs, eMs] of merged) {
+      let cursor = new Date(bMs);
+      const end = new Date(eMs);
       while (cursor < end) {
         const dayEnd = new Date(cursor);
         dayEnd.setHours(24, 0, 0, 0);
@@ -358,6 +372,8 @@
         cursor = segEnd;
       }
     }
+    // 분 단위 절사 - 초 버림
+    for (const k of Object.keys(out)) out[k] = Math.floor(out[k] / 60) * 60;
     return out;
   }
 

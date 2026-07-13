@@ -53,7 +53,7 @@
       dur: (h, min) => `${h}시간 ${String(min).padStart(2, "0")}분`,
       avgModeTotalLbl: "총 평균",
       avgModeWeekLbl: "주 평균",
-      avgModeOpts: { both: "둘 다", live: "지금", fixed: "오늘", none: "숨김" },
+      avgModeOpts: { both: "둘 다", live: "지금부터", fixed: "오늘부터", none: "숨김" },
     },
     en: {
       waiting:
@@ -506,9 +506,6 @@
           <label class="lt42-row-full"><span class="lt42-lbl-end"></span> <input type="date" class="lt42-end"></label>
           <div class="lt42-pair-row">
             <label><span class="lt42-lbl-goal"></span> <input type="number" class="lt42-target" min="0" placeholder="0"></label>
-            <label><span class="lt42-lbl-wgoal"></span> <input type="number" class="lt42-wgoal" min="0" placeholder="0"></label>
-          </div>
-          <div class="lt42-pair-row">
             <label><span class="lt42-lbl-avgmode-total"></span>
               <select class="lt42-avgmode-total">
                 <option value="both"></option>
@@ -517,6 +514,9 @@
                 <option value="none"></option>
               </select>
             </label>
+          </div>
+          <div class="lt42-pair-row">
+            <label><span class="lt42-lbl-wgoal"></span> <input type="number" class="lt42-wgoal" min="0" placeholder="0"></label>
             <label><span class="lt42-lbl-avgmode-week"></span>
               <select class="lt42-avgmode-week">
                 <option value="both"></option>

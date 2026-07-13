@@ -1,18 +1,44 @@
 #lt42-panel {
+  /* ---------- 색상 팔레트 (다크, 기본) ---------- */
+  --lt42-bg: #1f2937;           /* 패널 배경 */
+  --lt42-bg-input: #111827;     /* 입력칸/버튼 배경 */
+  --lt42-border: #374151;       /* 패널 테두리, 구분선, 바 트랙 */
+  --lt42-border-input: #4b5563; /* 입력칸 테두리 */
+  --lt42-text: #e5e7eb;         /* 기본 텍스트 */
+  --lt42-text-dim: #9ca3af;     /* 보조 텍스트 */
+  --lt42-text-dimmer: #6b7280;  /* 더 흐린 텍스트 (날짜 범위 등) */
+  --lt42-accent: #00babc;       /* 42 시그니처 청록 (제목, 바 시작) */
+  --lt42-blue: #38bdf8;         /* 강조 파랑 (숫자, 실시간 평균, 바 끝) */
+  --lt42-blue-soft: #7dd3fc;    /* 옅은 파랑 (고정 평균) */
+  --lt42-ok: #22c55e;           /* 달성 초록 */
+  --lt42-warn: #fbbf24;         /* 부족 노랑 */
+  --lt42-fail: #ef4444;         /* 미달 빨강 */
+  --lt42-day-on-bg: #b45309;    /* 제외 요일 켜짐 배경 */
+  --lt42-day-on-border: #f59e0b;
+  --lt42-chip-bg: #7c2d12;      /* 제외 날짜 칩 */
+  --lt42-chip-bg-hover: #9a3412;
+  --lt42-chip-text: #fed7aa;
+  --lt42-chip-border: #ea580c;
+  --lt42-btn-bg: #374151;       /* 일반 버튼 (+) 배경 */
+  --lt42-btn-bg-hover: #4b5563;
+  --lt42-now-bg: rgba(0, 186, 188, 0.1); /* 현재 주차 하이라이트 */
+  --lt42-shadow: rgba(0, 0, 0, 0.35);
+
+  /* ---------- 패널 본체 ---------- */
   position: fixed;
   right: 16px;
   bottom: 16px;
   width: 290px;
   z-index: 2147483000;
-  background: #1f2937;
-  color: #e5e7eb;
-  border: 1px solid #374151;
+  background: var(--lt42-bg);
+  color: var(--lt42-text);
+  border: 1px solid var(--lt42-border);
   border-radius: 12px;
   padding: 12px 14px;
   font-family: -apple-system, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
   font-size: 13px;
   line-height: 1.5;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 4px 16px var(--lt42-shadow);
 }
 
 #lt42-panel.lt42-collapsed .lt42-body,
@@ -27,6 +53,8 @@
   width: auto;
   padding: 8px 12px;
 }
+
+/* ---------- 헤더 ---------- */
 
 .lt42-header {
   display: flex;
@@ -49,7 +77,7 @@
 .lt42-title {
   font-weight: 700;
   font-size: 14px;
-  color: #00babc;
+  color: var(--lt42-accent);
   white-space: nowrap;
 }
 
@@ -60,7 +88,7 @@
 .lt42-lang {
   background: none;
   border: none;
-  color: #9ca3af;
+  color: var(--lt42-text-dim);
   cursor: pointer;
   font-size: 14px;
   padding: 2px 5px;
@@ -69,13 +97,15 @@
 .lt42-lang {
   font-size: 11px;
   font-weight: 700;
-  border: 1px solid #4b5563;
+  border: 1px solid var(--lt42-border-input);
   border-radius: 4px;
   padding: 2px 6px;
 }
 .lt42-gear:hover,
 .lt42-min:hover,
-.lt42-lang:hover { color: #e5e7eb; border-color: #9ca3af; }
+.lt42-lang:hover { color: var(--lt42-text); border-color: var(--lt42-text-dim); }
+
+/* ---------- 공통 행/텍스트 ---------- */
 
 .lt42-row {
   display: flex;
@@ -84,12 +114,31 @@
   padding: 1px 0;
 }
 
-.lt42-label { color: #9ca3af; }
+.lt42-label { color: var(--lt42-text-dim); }
 .lt42-value { font-weight: 700; white-space: nowrap; }
+
+.lt42-sub { font-size: 12px; color: var(--lt42-text-dim); }
+.lt42-warn { color: var(--lt42-warn); font-weight: 600; }
+.lt42-ok { color: var(--lt42-ok); font-weight: 600; }
+.lt42-fail { color: var(--lt42-fail); font-weight: 600; }
+.lt42-avg { color: var(--lt42-blue-soft); font-weight: 400; opacity: 0.75; }
+.lt42-avg-live { color: var(--lt42-blue); font-weight: 700; }
+.lt42-today { color: var(--lt42-text); font-weight: 700; }
+.lt42-today.lt42-ok { color: var(--lt42-ok); }
+
+.lt42-mono {
+  font-family: "SF Mono", Consolas, monospace;
+  color: var(--lt42-blue);
+}
+
+.lt42-dim { color: var(--lt42-text-dimmer); font-size: 11px; }
+.lt42-months-title { margin-bottom: 2px; }
+
+/* ---------- 진행 바 ---------- */
 
 .lt42-bar {
   height: 8px;
-  background: #374151;
+  background: var(--lt42-border);
   border-radius: 4px;
   overflow: hidden;
   margin: 6px 0;
@@ -97,43 +146,39 @@
 
 .lt42-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, #00babc, #38bdf8);
+  background: linear-gradient(90deg, var(--lt42-accent), var(--lt42-blue));
   border-radius: 4px;
   transition: width 0.4s ease;
 }
-.lt42-bar-fill.lt42-done { background: #22c55e; }
+.lt42-bar-fill.lt42-done { background: var(--lt42-ok); }
 
-.lt42-sub { font-size: 12px; color: #9ca3af; }
-.lt42-warn { color: #fbbf24; font-weight: 600; }
-.lt42-ok { color: #22c55e; font-weight: 600; }
-.lt42-avg { color: #7dd3fc; font-weight: 400; opacity: 0.75; }
-.lt42-avg-live { color: #38bdf8; font-weight: 700; }
-.lt42-today { color: #e5e7eb; font-weight: 700; }
-.lt42-today.lt42-ok { color: #22c55e; }
+/* ---------- 주차별 / 월별 섹션 ---------- */
 
 .lt42-weeks {
   margin-top: 8px;
-  border-top: 1px solid #374151;
+  border-top: 1px solid var(--lt42-border);
   padding-top: 6px;
 }
 
 .lt42-months {
   margin-top: 8px;
-  border-top: 1px solid #374151;
+  border-top: 1px solid var(--lt42-border);
   padding-top: 6px;
 }
 
-.lt42-mono {
-  font-family: "SF Mono", Consolas, monospace;
-  color: #38bdf8;
+.lt42-week-now {
+  background: var(--lt42-now-bg);
+  border-radius: 4px;
+  margin: 0 -4px;
+  padding: 1px 4px;
 }
+.lt42-week-now > span:first-child { color: var(--lt42-accent); font-weight: 600; }
 
-.lt42-dim { color: #6b7280; font-size: 11px; }
-.lt42-months-title { margin-bottom: 2px; }
+/* ---------- 설정 ---------- */
 
 .lt42-settings {
   margin-top: 8px;
-  border-top: 1px solid #374151;
+  border-top: 1px solid var(--lt42-border);
   padding-top: 8px;
   display: flex;
   flex-wrap: wrap;
@@ -146,13 +191,13 @@
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--lt42-text-dim);
 }
 
 .lt42-settings input {
-  background: #111827;
-  color: #e5e7eb;
-  border: 1px solid #4b5563;
+  background: var(--lt42-bg-input);
+  color: var(--lt42-text);
+  border: 1px solid var(--lt42-border-input);
   border-radius: 4px;
   padding: 2px 6px;
   font-size: 12px;
@@ -161,8 +206,8 @@
 .lt42-settings input[type="number"] { width: 52px; }
 
 .lt42-settings input.lt42-invalid {
-  border-color: #ef4444;
-  outline: 1px solid #ef4444;
+  border-color: var(--lt42-fail);
+  outline: 1px solid var(--lt42-fail);
 }
 
 /* 제외 요일 토글 */
@@ -173,18 +218,18 @@
   width: 100%;
   min-width: 0;
 }
-.lt42-lbl-days { font-size: 12px; color: #9ca3af; white-space: nowrap; }
+.lt42-lbl-days { font-size: 12px; color: var(--lt42-text-dim); white-space: nowrap; }
 .lt42-day-btns {
   display: flex;
   gap: 3px;
   flex: 1;
   min-width: 0;
-  flex-wrap: wrap; /* 넘치면 다음 줄로 */
+  flex-wrap: wrap;
 }
 .lt42-day {
-  background: #111827;
-  color: #9ca3af;
-  border: 1px solid #4b5563;
+  background: var(--lt42-bg-input);
+  color: var(--lt42-text-dim);
+  border: 1px solid var(--lt42-border-input);
   border-radius: 4px;
   padding: 2px 6px;
   font-size: 11px;
@@ -192,10 +237,10 @@
   line-height: 1.4;
   flex: 0 0 auto;
 }
-.lt42-day:hover { border-color: #9ca3af; }
+.lt42-day:hover { border-color: var(--lt42-text-dim); }
 .lt42-day.lt42-day-on {
-  background: #b45309;
-  border-color: #f59e0b;
+  background: var(--lt42-day-on-bg);
+  border-color: var(--lt42-day-on-border);
   color: #fff;
   font-weight: 700;
 }
@@ -207,18 +252,18 @@
   gap: 6px;
   width: 100%;
 }
-.lt42-lbl-dates { font-size: 12px; color: #9ca3af; white-space: nowrap; }
+.lt42-lbl-dates { font-size: 12px; color: var(--lt42-text-dim); white-space: nowrap; }
 .lt42-add-date {
-  background: #374151;
-  color: #e5e7eb;
-  border: 1px solid #4b5563;
+  background: var(--lt42-btn-bg);
+  color: var(--lt42-text);
+  border: 1px solid var(--lt42-border-input);
   border-radius: 4px;
   padding: 2px 8px;
   font-weight: 700;
   cursor: pointer;
   line-height: 1.4;
 }
-.lt42-add-date:hover { background: #4b5563; }
+.lt42-add-date:hover { background: var(--lt42-btn-bg-hover); }
 .lt42-date-chips {
   display: flex;
   flex-wrap: wrap;
@@ -227,16 +272,18 @@
 }
 .lt42-date-chips:empty { display: none; }
 .lt42-chip {
-  background: #7c2d12;
-  color: #fed7aa;
-  border: 1px solid #ea580c;
+  background: var(--lt42-chip-bg);
+  color: var(--lt42-chip-text);
+  border: 1px solid var(--lt42-chip-border);
   border-radius: 10px;
   padding: 1px 8px;
   font-size: 11px;
   cursor: pointer;
   line-height: 1.5;
 }
-.lt42-chip:hover { background: #9a3412; }
+.lt42-chip:hover { background: var(--lt42-chip-bg-hover); }
+
+/* ---------- 접힘 요약 ---------- */
 
 /* 접었을 때만 헤더에 누적/목표 요약 표시 */
 .lt42-summary {
@@ -244,8 +291,8 @@
   font-family: "SF Mono", Consolas, monospace;
   font-size: 12px;
   font-weight: 700;
-  color: #e5e7eb;
+  color: var(--lt42-text);
   white-space: nowrap;
 }
 #lt42-panel.lt42-collapsed .lt42-summary { display: inline; }
-.lt42-summary.lt42-summary-done { color: #22c55e; }
+.lt42-summary.lt42-summary-done { color: var(--lt42-ok); }

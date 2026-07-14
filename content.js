@@ -6,10 +6,11 @@
     lang: "ko",
     excludeDays: [], // 제외 요일: 0(일)~6(토)
     excludeDates: [], // 제외 날짜: ["2026-07-15", ...]
-    weeklyGoal: 0, // 주차별 목표 시간(h). 0이면 표시 안 함 (경북대 현장실습: 40)
+    weeklyGoal: 0, // 주차별 목표 시간(h). 0이면 표시 안 함
 	theme: "", // "light" | "dark" | ""(시스템 따라감)
-	avgModeTotal: "fixed", // "both" | "live" | "fixed" | "none" — [총] 하루 평균 줄 표시 방식
-	avgModeWeek: "fixed",  // "both" | "live" | "fixed" | "none" — [주] 하루 평균 줄 표시 방식
+	avgModeTotal: "none", // "both" | "live" | "fixed" | "none" — [총] 하루 평균 줄 표시 방식
+	avgModeWeek: "none",  // "both" | "live" | "fixed" | "none" — [주] 하루 평균 줄 표시 방식
+	todayGoal: 0, // 오늘 목표 시간(h). 0이면 미사용
   };
 
   const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -54,6 +55,9 @@
       avgModeTotalLbl: "총 평균",
       avgModeWeekLbl: "주 평균",
       avgModeOpts: { both: "둘 다", live: "지금부터", fixed: "오늘부터", none: "숨김" },
+      tgoal: "오늘 목표(h)",
+      todayProject: (avg) => `목표 달성 시 내일부터 매일 ${avg}`,
+      todayFinish: "오늘 목표 달성!",
     },
     en: {
       waiting:
@@ -95,6 +99,9 @@
       avgModeTotalLbl: "Total avg",
       avgModeWeekLbl: "Week avg",
       avgModeOpts: { both: "Both", live: "Live only", fixed: "Fixed only", none: "Hide" },
+      tgoal: "Today goal(h)",
+      todayProject: (avg) => `Hit today's goal → ${avg} / day after`,
+      todayFinish: "Hit today's goal!",
     },
   };
 
@@ -216,6 +223,10 @@
 	const avgModes = ["both", "live", "fixed", "none"];
 	if (raw && avgModes.includes(raw.avgModeTotal)) s.avgModeTotal = raw.avgModeTotal;
 	if (raw && avgModes.includes(raw.avgModeWeek)) s.avgModeWeek = raw.avgModeWeek;
+	if (raw && raw.todayGoal !== undefined) {
+	  const tg = Number(raw.todayGoal);
+	  if (Number.isFinite(tg) && tg >= 0) s.todayGoal = tg;
+	}
     return s;
   }
 
@@ -338,7 +349,6 @@
     for (const [date, dur] of Object.entries(raw)) {
       out[date] = (out[date] || 0) + durationToSeconds(dur);
     }
-    // 인트라 캘린더 표기(분 단위 절사)에 맞춰 일 단위로 초 버림
     for (const k of Object.keys(out)) out[k] = Math.floor(out[k] / 60) * 60;
     return out;
   }
@@ -476,6 +486,7 @@
         piscineEnd: endInput.value,
         targetHours: panel.querySelector(".lt42-target").value,
         weeklyGoal: panel.querySelector(".lt42-wgoal").value || 0,
+        todayGoal: panel.querySelector(".lt42-tgoal").value || 0,
         lang: settings.lang,
         excludeDays,
       },
@@ -542,6 +553,7 @@
               </select>
             </label>
           </div>
+          <label class="lt42-row-full"><span class="lt42-lbl-tgoal"></span> <input type="number" class="lt42-tgoal" min="0" step="0.5" placeholder="0"></label>
           <div class="lt42-days-row">
             <span class="lt42-lbl-days"></span>
             <span class="lt42-day-btns">
@@ -604,7 +616,7 @@
       e.target.textContent = panel.classList.contains("lt42-collapsed") ? "+" : "−";
     });
 
-    for (const sel of [".lt42-start", ".lt42-end", ".lt42-target", ".lt42-wgoal"]) {
+    for (const sel of [".lt42-start", ".lt42-end", ".lt42-target", ".lt42-wgoal", ".lt42-tgoal"]) {
       const input = panel.querySelector(sel);
       input.addEventListener("change", () => applySettingsFromInputs(panel));
       input.addEventListener("input", () => applySettingsFromInputs(panel));
@@ -651,6 +663,7 @@
     panel.querySelector(".lt42-end").value = settings.piscineEnd;
     panel.querySelector(".lt42-target").value = settings.targetHours || "";
     panel.querySelector(".lt42-wgoal").value = settings.weeklyGoal || "";
+    panel.querySelector(".lt42-tgoal").value = settings.todayGoal || "";
     panel.querySelector(".lt42-avgmode-total").value = settings.avgModeTotal;
     panel.querySelector(".lt42-avgmode-week").value = settings.avgModeWeek;
     for (const btn of panel.querySelectorAll(".lt42-day")) {
@@ -681,6 +694,7 @@
     panel.querySelector(".lt42-lbl-end").textContent = l.end;
     panel.querySelector(".lt42-lbl-goal").textContent = l.goal;
     panel.querySelector(".lt42-lbl-wgoal").textContent = l.wgoal;
+    panel.querySelector(".lt42-lbl-tgoal").textContent = l.tgoal;
     panel.querySelector(".lt42-lbl-avgmode-total").textContent = l.avgModeTotalLbl;
     panel.querySelector(".lt42-lbl-avgmode-week").textContent = l.avgModeWeekLbl;
     for (const opt of panel.querySelectorAll(".lt42-avgmode-total option, .lt42-avgmode-week option")) {
@@ -803,8 +817,19 @@
       weekAvgLiveLine = "";
     }
 
+    // ---------- 오늘 섹션 (오늘 목표) ----------
+    const tg = settings.todayGoal; // 0이면 미사용
+    const tgSec = tg * 3600;
+    // 오늘이 제외 요일/날짜인지 (쉬는 날엔 목표 바·예측을 표시하지 않음)
+    const todayExcluded =
+      settings.excludeDays.includes(new Date(today + "T00:00:00").getDay()) ||
+      settings.excludeDates.includes(today);
+
     let todayCleared = false;
-    if (mode === "total" && remainSec > 0 && daysLeft > 0) {
+    if (tg > 0) {
+      // 오늘 목표를 설정했으면 그 값이 달성 기준
+      todayCleared = todaySec >= tgSec;
+    } else if (mode === "total" && remainSec > 0 && daysLeft > 0) {
       const from = today > start ? today : start;
       const eff = countDaysExcluding(from, end, settings.excludeDays, settings.excludeDates);
       if (eff > 0) todayCleared = todaySec >= remainSec / eff;
@@ -813,6 +838,46 @@
       if (eff > 0) todayCleared = todaySec >= curWeekRemain / eff;
     } else if ((mode === "total" && remainSec === 0) || (mode === "week" && curWeek && curWeekRemain === 0)) {
       todayCleared = true;
+    }
+
+    // 오늘 미니 바 (목표 설정 + 기간 내 + 쉬는 날 아님)
+    let todayBarPct = -1;
+    if (tg > 0 && !todayExcluded && daysLeft > 0) {
+      todayBarPct = Math.min(100, (todaySec / tgSec) * 100);
+    }
+
+    // "오늘 목표 달성 시 내일부터 매일 X" — 활성 목표(총/주)의 부족분 기준.
+    // 어제까지 기준 부족분(현재 부족 + 오늘 로그타임)에서 오늘 몫을 빼고
+    // 내일부터 남은 날(제외 반영)로 나눈다. 오늘 이미 목표보다 많이 했으면
+    // 실제 오늘 로그타임을 사용.
+    let todayProjectLine = "";
+    if (tg > 0 && !todayExcluded && daysLeft > 0 && mode !== "none") {
+      const baseRemain = mode === "total" ? remainSec : curWeek ? curWeekRemain : -1;
+      const boundary = mode === "total" ? end : curWeek ? curWeek.to : null;
+      if (baseRemain >= 0 && boundary) {
+        const effToday = Math.max(tgSec, todaySec);
+        const afterToday = baseRemain + todaySec - effToday;
+        if (afterToday <= 0) {
+          todayProjectLine = `<span class="lt42-ok">${l.todayFinish}</span>`;
+        } else {
+          const tomorrow = new Date(today + "T00:00:00");
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          const tomorrowISO = isoDate(tomorrow);
+          if (tomorrowISO <= boundary) {
+            const effDays = countDaysExcluding(
+              tomorrowISO,
+              boundary,
+              settings.excludeDays,
+              settings.excludeDates
+            );
+            if (effDays > 0) {
+              todayProjectLine = l.todayProject(
+                `<span class="lt42-avg-live">${fmt(Math.ceil(afterToday / effDays))}</span>`
+              );
+            }
+          }
+        }
+      }
     }
 
     let headLabel = `${l.piscine} ${mmdd(start)} ~ ${mmdd(end)}`;
@@ -864,7 +929,20 @@
         ${avgLiveLine ? `<div class="lt42-sub"><span class="lt42-avg-live">${avgLiveLine}</span></div>` : ""}
         ${weekAvgLine ? `<div class="lt42-sub">${weekAvgLine}</div>` : ""}
         ${weekAvgLiveLine ? `<div class="lt42-sub">${weekAvgLiveLine}</div>` : ""}
-        <div class="lt42-sub"><span class="lt42-today-label">${l.today}</span>: <span class="lt42-today${todayCleared ? " lt42-ok" : ""}">${fmt(todaySec)}</span></div>
+      </div>
+
+      <div class="lt42-today-sec">
+        <div class="lt42-sub"><span class="lt42-today-label">${l.today}</span>: <span class="lt42-today${todayCleared ? " lt42-ok" : ""}">${fmt(todaySec)}</span>${tg > 0 ? `<span class="lt42-dim"> / ${tg}h</span>` : ""}</div>
+        ${
+          todayBarPct >= 0
+            ? `
+        <div class="lt42-bar lt42-bar-mini">
+          <div class="lt42-bar-fill${todayCleared ? " lt42-done" : ""}"
+               style="width:${todayBarPct.toFixed(1)}%"></div>
+        </div>`
+            : ""
+        }
+        ${todayProjectLine ? `<div class="lt42-sub">${todayProjectLine}</div>` : ""}
       </div>
 
       <div class="lt42-weeks">

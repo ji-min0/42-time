@@ -156,7 +156,19 @@
 }
 .lt42-bar-fill.lt42-done { background: var(--lt42-ok); }
 
-/* ---------- 주차별 / 월별 섹션 ---------- */
+/* 오늘 미니 바: 기존 바와 같은 스타일, 높이만 얇게 */
+.lt42-bar-mini {
+  height: 5px;
+  margin: 4px 0;
+}
+
+/* ---------- 오늘 / 주차별 / 월별 섹션 ---------- */
+
+.lt42-today-sec {
+  margin-top: 8px;
+  border-top: 1px solid var(--lt42-border);
+  padding-top: 6px;
+}
 
 .lt42-weeks {
   margin-top: 8px;

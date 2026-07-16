@@ -56,8 +56,8 @@
       avgModeWeekLbl: "주 평균",
       avgModeOpts: { both: "둘 다", live: "지금부터", fixed: "오늘부터", none: "숨김" },
       tgoal: "오늘 목표(h)",
-      todayProject: (avg) => `목표 달성 시 내일부터 매일 ${avg}`,
-      todayProjectLive: (avg) => `지금 멈추면 내일부터 매일 ${avg}`,
+      todayProject: (avg) => `목표 달성 시 ${avg} / 일`,
+      todayProjectLive: (avg) => `지금 멈추면 ${avg} / 일`,
       todayFinish: "오늘 목표 달성!",
     },
     en: {

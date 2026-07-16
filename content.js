@@ -57,6 +57,7 @@
       avgModeOpts: { both: "둘 다", live: "지금부터", fixed: "오늘부터", none: "숨김" },
       tgoal: "오늘 목표(h)",
       todayProject: (avg) => `목표 달성 시 내일부터 매일 ${avg}`,
+      todayProjectLive: (avg) => `지금 멈추면 내일부터 매일 ${avg}`,
       todayFinish: "오늘 목표 달성!",
     },
     en: {
@@ -101,6 +102,7 @@
       avgModeOpts: { both: "Both", live: "Live only", fixed: "Fixed only", none: "Hide" },
       tgoal: "Today goal(h)",
       todayProject: (avg) => `Hit today's goal → ${avg} / day after`,
+      todayProjectLive: (avg) => `Stop now → ${avg} / day after`,
       todayFinish: "Hit today's goal!",
     },
   };
@@ -851,6 +853,7 @@
     // 내일부터 남은 날(제외 반영)로 나눈다. 오늘 이미 목표보다 많이 했으면
     // 실제 오늘 로그타임을 사용.
     let todayProjectLine = "";
+    let todayProjectLiveLine = "";
     if (tg > 0 && !todayExcluded && daysLeft > 0 && mode !== "none") {
       const baseRemain = mode === "total" ? remainSec : curWeek ? curWeekRemain : -1;
       const boundary = mode === "total" ? end : curWeek ? curWeek.to : null;
@@ -874,6 +877,11 @@
               todayProjectLine = l.todayProject(
                 `<span class="lt42-avg-live">${fmt(Math.ceil(afterToday / effDays))}</span>`
               );
+              if (todaySec > 0 && todaySec < tgSec) {
+                todayProjectLiveLine = l.todayProjectLive(
+                  `<span class="lt42-avg">${fmt(Math.ceil(baseRemain / effDays))}</span>`
+                );
+              }
             }
           }
         }
@@ -943,6 +951,7 @@
             : ""
         }
         ${todayProjectLine ? `<div class="lt42-sub">${todayProjectLine}</div>` : ""}
+        ${todayProjectLiveLine ? `<div class="lt42-sub">${todayProjectLiveLine}</div>` : ""}
       </div>
 
       <div class="lt42-weeks">

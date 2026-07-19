@@ -58,7 +58,7 @@
       tgoal: "오늘 목표(h)",
       todayProject: (avg) => `목표 달성 시 ${avg} / 일`,
       todayProjectLive: (avg) => `지금 멈추면 ${avg} / 일`,
-      todayFinish: "오늘 목표 달성!",
+      todayDone: "오늘 목표 달성!",
     },
     en: {
       waiting:
@@ -103,7 +103,7 @@
       tgoal: "Today goal(h)",
       todayProject: (avg) => `Hit today's goal → ${avg} / day after`,
       todayProjectLive: (avg) => `Stop now → ${avg} / day after`,
-      todayFinish: "Hit today's goal!",
+      todayDone: "Hit today's goal!",
     },
   };
 
@@ -860,9 +860,9 @@
       if (baseRemain >= 0 && boundary) {
         const effToday = Math.max(tgSec, todaySec);
         const afterToday = baseRemain + todaySec - effToday;
-        if (afterToday <= 0) {
-          todayProjectLine = `<span class="lt42-ok">${l.todayFinish}</span>`;
-        } else {
+        if (todaySec >= tgSec) {
+          todayProjectLine = `<span class="lt42-ok">${l.todayDone}</span>`;
+        } else if (afterToday > 0) {
           const tomorrow = new Date(today + "T00:00:00");
           tomorrow.setDate(tomorrow.getDate() + 1);
           const tomorrowISO = isoDate(tomorrow);
